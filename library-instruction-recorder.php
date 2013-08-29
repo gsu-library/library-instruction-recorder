@@ -39,29 +39,39 @@ if(!class_exists('LIR')) {
 			in WordPress.
 	*/
 	class LIR {
-		//CHANGE TO PULL THIS FROM THE WP_OPTIONS TABLE. ALLOW NAME CHANGING AT SOME POINT.
+		//Do not change these variables. The plugin name and slug can be changed in the LIR settings.
 		const NAME = 'Library Instruction Recorder';
 		const SLUG = 'LIR';
 		const OPTIONS = 'lir_options';
 		const OPTIONS_GROUP = 'lir_options_group';
+		const VERSION = '0.0.1';
 		private $options;
+		private $table;
 
 
 		/*
 			Constructor: __construct
-				Adds actions and filters to WP upon construction.
+				Adds register hooks, actions, and filters to WP upon construction. Also loads the options for the plugin.
 		*/
 		public function __construct() {
-			register_activation_hook(__FILE__, array(&$this, 'activationHook')); //http://codex.wordpress.org/Function_Reference/register_activation_hook
+			register_activation_hook(__FILE__, array(&$this, 'activationHook'));
 			register_deactivation_hook(__FILE__, array(&$this, 'deactivationHook'));
+			register_uninstall_hook(__FILE__, array(&$this, 'uninstallHook'));
 
 			//Actions and filters.
 			add_action('admin_menu', array(&$this, 'createMenu'));
 			add_action('admin_init', array(&$this, 'adminInit'));
 			add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
-			
+
 			//Load options.
 			$this->options = get_option(self::OPTIONS, NULL);
+
+			//Prep table names.
+			global $wpdb;
+			$this->table = array(
+				'posts'	=>	$wpdb->prefix.self::SLUG.'_posts',
+				'meta'	=>	$wpdb->prefix.self::SLUG.'_meta'
+			);
 		}
 
 
@@ -70,16 +80,31 @@ if(!class_exists('LIR')) {
 				Checks to make sure WordPress is compatible, sets up tables, and sets up options.
 		*/
 		public static function activationHook() {
+			if(!current_user_can('manage_options'))
+				wp_die('You do not have sufficient permissions to access this page.');
+
 			global $wp_version;
-			
 			if(version_compare($wp_version, '3.6', '<'))
 				wp_die('This plugin requires WordPress version 3.6 or higher.');
-				
-			$options = array(	'debug' => false,
-									'name' => 'Library Instruction Recorder', 
-									'slug' => 'LIR');
+
+			//Create default options for wp_options if they don't already exist.
+			$options = array(	'debug'		=> false,
+									'version'	=> self::VERSION,
+									'name'		=> self::NAME,
+									'slug'		=> self::SLUG );
 
 			add_option(self::OPTIONS, $options, '', 'no');
+
+			//CHECK VERSION NUMBER AND UPDATE DATABASE IF NEEDED
+			//Add LIR tables to the database if they do not exist.
+			global $wpdb;
+			require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+
+			$query = '
+				CREATE TABLE '.$this->table["posts"].' (
+
+				);
+			';
 		}
 
 
@@ -89,8 +114,22 @@ if(!class_exists('LIR')) {
 				purposes.
 		*/
 		public static function deactivationHook() {
-			//MAKE SURE DEACTIVATION WAS CALLED BY USER
+			if(!current_user_can('manage_options'))
+				wp_die('You do not have sufficient permissions to access this page.');
+
 			//MOVE THIS TO THE UINSTALL HOOK/FILE WHEN READY TO GO LIVE***********
+			delete_option(self::OPTIONS);
+		}
+
+
+		/*
+			Function: uninstallHook
+				Used to cleanup items after uninstalling the plugin (databases, wp_options, &c.).
+		*/
+		public static function uninstallHook() {
+			if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN'))
+				wp_die('You do not have sufficient permissions to access this page.');
+
 			delete_option(self::OPTIONS);
 		}
 
@@ -105,17 +144,17 @@ if(!class_exists('LIR')) {
 		public function createMenu() {
 			add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
 			//Added so the first submenu item does not have the same title as the main menu item.
-			add_submenu_page(	self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts', 
+			add_submenu_page(	self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts',
 									self::SLUG, array(&$this, 'defaultPage'));
-			add_submenu_page(	self::SLUG, 'Add a Class', 'Add a Class', 'edit_posts', 
+			add_submenu_page(	self::SLUG, 'Add a Class', 'Add a Class', 'edit_posts',
 									self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
-			add_submenu_page(	self::SLUG, 'Settings', 'Settings', 'manage_options', 
+			add_submenu_page(	self::SLUG, 'Settings', 'Settings', 'manage_options',
 									self::SLUG.'-settings', array(&$this, 'settingsPage'));
 		}
-		
-		
+
+
 		/*
-		
+
 		*/
 		public function adminInit() {
 			register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
@@ -191,10 +230,10 @@ if(!class_exists('LIR')) {
 						</tr>
 						<tr>
 							<th scope="row">Debugging</th>
-							<td><input type="checkbox" name=<?php echo '"'.self::OPTIONS.'[debug]" '.checked($this->options['debug'], 'on', false); ?> /> Enabled</td>
+							<td><input type="checkbox" name="<?php echo self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], 'on'); ?> /> Enabled</td>
 						</tr>
 					</table>
-					
+
 					<p class="submit">
 						<input type="submit" class="button-primary" value="Save Changes" />
 					</p>
@@ -202,22 +241,23 @@ if(!class_exists('LIR')) {
 			</div>
 			<?php
 		}
-		
-		
+
+
 		/*
 			Function: sanitizeSettings
 				Sanitizes all inputs that are run through the options page.
-				
+
 			Inputs:
 				input	-	Array of options from the LIR settings page.
-				
+
 			Returns:
 				array	-	Array of sanitized options.
 		*/
 		public function sanitizeSettings($input) {
 			$input['name'] = sanitize_text_field($input['name']);
 			$input['slug'] = sanitize_text_field($input['slug']);
-			
+			$input['debug'] = ($input['debug'] == 'on') ? 'on' : '';
+
 			return $input;
 		}
 
