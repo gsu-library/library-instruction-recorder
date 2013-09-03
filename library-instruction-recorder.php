@@ -54,6 +54,7 @@ if(!class_exists('LIR')) {
 				Adds register hooks, actions, and filters to WP upon construction. Also loads the options for the plugin.
 		*/
 		public function __construct() {
+			//Registration hooks.
 			register_activation_hook(__FILE__, array(&$this, 'activationHook'));
 			register_deactivation_hook(__FILE__, array(&$this, 'deactivationHook'));
 			register_uninstall_hook(__FILE__, array(&$this, 'uninstallHook'));
@@ -98,13 +99,43 @@ if(!class_exists('LIR')) {
 			//CHECK VERSION NUMBER AND UPDATE DATABASE IF NEEDED
 			//Add LIR tables to the database if they do not exist.
 			global $wpdb;
-			require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+			require_once(ABSPATH.'wp-admin/includes/upgrade.php'); //Required for dbDelta.
+			
+			//Post table.
+			$query =	"CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.'_posts'." (
+							id mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+							librarian_name varchar(255) NOT NULL,
+							librarian_name_2 varchar(255) DEFAULT NULL,
+							instructor_name varchar(255) NOT NULL,
+							instructor_email varchar(255) DEFAULT NULL,
+							instructor_phone varchar(255) DEFAULT NULL,
+							class_start datetime NOT NULL,
+							class_end datetime NOT NULL,
+							class_location varchar(255) NOT NULL,
+							class_type varchar(255) NOT NULL,
+							audience varchar(255) NOT NULL,
+							class_description mediumtext,
+							department_group varchar(255) NOT NULL,
+							course_number varchar(255) DEFAULT NULL,
+							bool_1 tinyint(1) DEFAULT NULL,
+							bool_2 tinyint(1) DEFAULT NULL,
+							bool_3 tinyint(1) DEFAULT NULL,
+							attendance smallint(6) NOT NULL DEFAULT '-1',
+							last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+							last_updated_by varchar(255) NOT NULL,
+							PRIMARY KEY  (id)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
-			$query = '
-				CREATE TABLE '.$this->table["posts"].' (
+			dbDelta($query);
+			
+			//Meta table.
+			$query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.'_meta'." (
+							field varchar(255) NOT NULL,
+							value varchar(255) NOT NULL,
+							PRIMARY KEY  (field)
+						) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
-				);
-			';
+			dbDelta($query);
 		}
 
 
@@ -118,6 +149,7 @@ if(!class_exists('LIR')) {
 				wp_die('You do not have sufficient permissions to access this page.');
 
 			//MOVE THIS TO THE UINSTALL HOOK/FILE WHEN READY TO GO LIVE***********
+			//MAKE THIS A DEBUG STATEMENT?
 			delete_option(self::OPTIONS);
 		}
 
@@ -221,7 +253,7 @@ if(!class_exists('LIR')) {
 					<?php settings_fields(self::OPTIONS_GROUP); ?>
 					<table class="form-table">
 						<tr>
-							<th scope="row"><label for="<?php echo self::OPTIONS.'[name]'; ?>">Plugin Name</label></th>
+							<th scope="row">Plugin Name</th>
 							<td><input type="text" name="<?php echo self::OPTIONS.'[name]'; ?>" value="<?php echo $this->options['name']; ?>" /></td>
 						</tr>
 						<tr>
