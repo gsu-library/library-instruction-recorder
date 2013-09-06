@@ -62,6 +62,7 @@ if(!class_exists('LIR')) {
 			//Actions and filters.
 			add_action('admin_menu', array(&$this, 'createMenu'));
 			add_action('admin_init', array(&$this, 'adminInit'));
+			add_action('admin_enqueue_scripts', array(&$this, 'addJSCSS'));
 			add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
 			//Load options.
@@ -95,17 +96,18 @@ if(!class_exists('LIR')) {
 									'slug'		=> self::SLUG );
 
 			add_option(self::OPTIONS, $options, '', 'no');
+			$options = get_option(self::OPTIONS);
 
 			//CHECK VERSION NUMBER AND UPDATE DATABASE IF NEEDED
 			//Add LIR tables to the database if they do not exist.
 			global $wpdb;
 			require_once(ABSPATH.'wp-admin/includes/upgrade.php'); //Required for dbDelta.
-			
+
 			//Post table.
 			$query =	"CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.'_posts'." (
 							id mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
 							librarian_name varchar(255) NOT NULL,
-							librarian_name_2 varchar(255) DEFAULT NULL,
+							librarian2_name varchar(255) DEFAULT NULL,
 							instructor_name varchar(255) NOT NULL,
 							instructor_email varchar(255) DEFAULT NULL,
 							instructor_phone varchar(255) DEFAULT NULL,
@@ -117,9 +119,9 @@ if(!class_exists('LIR')) {
 							class_description mediumtext,
 							department_group varchar(255) NOT NULL,
 							course_number varchar(255) DEFAULT NULL,
-							bool_1 tinyint(1) DEFAULT NULL,
-							bool_2 tinyint(1) DEFAULT NULL,
-							bool_3 tinyint(1) DEFAULT NULL,
+							bool1 tinyint(1) NOT NULL DEFAULT '0',
+							bool2 tinyint(1) NOT NULL DEFAULT '0',
+							bool3 tinyint(1) NOT NULL DEFAULT '0',
 							attendance smallint(6) NOT NULL DEFAULT '-1',
 							last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 							last_updated_by varchar(255) NOT NULL,
@@ -127,7 +129,7 @@ if(!class_exists('LIR')) {
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
 			dbDelta($query);
-			
+
 			//Meta table.
 			$query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.'_meta'." (
 							field varchar(255) NOT NULL,
@@ -150,7 +152,12 @@ if(!class_exists('LIR')) {
 
 			//MOVE THIS TO THE UINSTALL HOOK/FILE WHEN READY TO GO LIVE***********
 			//MAKE THIS A DEBUG STATEMENT?
-			delete_option(self::OPTIONS);
+			//Remove options saved in wp_options table.
+			//delete_option(self::OPTIONS);
+
+			//Remove custom database tables (post & meta).
+			global $wpdb;
+			$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
 		}
 
 
@@ -162,7 +169,12 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
+			//Remove options saved in wp_options table.
 			delete_option(self::OPTIONS);
+
+			//Remove custom database tables (post & meta).
+			global $wpdb;
+			$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
 		}
 
 
@@ -180,6 +192,8 @@ if(!class_exists('LIR')) {
 									self::SLUG, array(&$this, 'defaultPage'));
 			add_submenu_page(	self::SLUG, 'Add a Class', 'Add a Class', 'edit_posts',
 									self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
+			add_submenu_page(	self::SLUG, 'Fields', 'Fields', 'manage_options',
+									self::SLUG.'-fields', array(&$this, 'fieldsPage'));
 			add_submenu_page(	self::SLUG, 'Settings', 'Settings', 'manage_options',
 									self::SLUG.'-settings', array(&$this, 'settingsPage'));
 		}
@@ -190,6 +204,19 @@ if(!class_exists('LIR')) {
 		*/
 		public function adminInit() {
 			register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
+		}
+
+
+		/*
+
+		*/
+		public function addJSCSS() {
+			global $parent_file;
+
+			if($parent_file != self::SLUG) return;
+
+			wp_enqueue_script(self::SLUG.'_admin_JS', plugins_url('js/admin.js', __FILE__));
+			wp_enqueue_style(self::SLUG.'_admin_CSS', plugins_url('css/admin.css', __FILE__));
 		}
 
 
@@ -206,10 +233,48 @@ if(!class_exists('LIR')) {
 				wp_die('You do not have sufficient permissions to access this page.');
 			}
 
-			echo '<div class="wrap">
-						<h2>'.$this->options['name'].'</h2>
-						<h3>Upcoming Classes</h3>
-					</div>';
+			global $wpdb;
+			$query = "SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY class_start, class_end, librarian_name";
+			$result = $wpdb->get_results($query);
+
+			?>
+			<div class="wrap">
+				<h2><?php echo $this->options['name']; ?></h2>
+				<h3>Upcoming Classes <a style="font-weight:normal;" href="<?php echo 'admin.php?page='.self::SLUG.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h3>
+				<table>
+				<?php
+				//Post a table row for each class in $result.
+				foreach($result as $class) {
+					echo '<tr><td>'.$class->department_group.' '.$class->course_number.'</td>';
+
+					//Display start date & time - end date & time.
+					if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
+						echo '<td>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
+						echo date('g:i A', strtotime($class->class_end)).'</td>';
+					}
+					//If the end time is not on the same day as the start time.
+					else {
+						//****************FINISH THIS
+					}
+
+					echo '<td>'.$class->librarian_name.'</td>';
+
+					//Instructor name and email.
+					if($class->instructor_name && $class->instructor_email) {
+						$mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
+						echo '<td><a href="'.$mailto.'">'.$class->instructor_name.'</a></td>';
+					}
+					else
+						echo '<td>'.$class->instructor_name.'</td>';
+
+					echo '<td><a href="#">Details</a></td>';
+
+					echo '</tr>';
+				}//End foreach loop.
+				?>
+				</table>
+			</div>
+			<?php
 		}
 
 
@@ -219,15 +284,294 @@ if(!class_exists('LIR')) {
 
 			Outputs:
 				HTML for the add a class page.
+
+			See Also:
+				<addUpdateClass>
 		*/
 		public function addClassPage() {
 			if(!current_user_can('edit_posts')) {
 				wp_die('You do not have sufficient permissions to access this page.');
 			}
 
-			echo '<div class="wrap">
-						<h2>Add a Class</h2>
+			global $user_identity, $wpdb;
+			get_currentuserinfo();
+
+			$classAdded = false;
+			//If form has been submitted and has a valid nonce.
+			if(isset($_POST['submitted']) && ($debug['nonce verified'] = wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_add_class'))) {
+				$error = array();
+
+				//Check to make sure all required fields have been submitted.
+				if(empty($_POST['librarian_name']))		array_push($error, 'Missing Field: Primary Librarian');
+				if(empty($_POST['instructor_name']))	array_push($error, 'Missing Field: Instructor Name');
+				if(empty($_POST['department_group']))	array_push($error, 'Missing Field: Department/Group');
+				if(empty($_POST['class_date']))			array_push($error, 'Missing Field: Class Date');
+				if(empty($_POST['class_time']))			array_push($error, 'Missing Field: Class Time');
+				if(empty($_POST['class_length']))		array_push($error, 'Missing Field: Class Length');
+				if(empty($_POST['class_location']))		array_push($error, 'Missing Field: Class Location');
+				if(empty($_POST['class_type']))			array_push($error, 'Missing Field: Class Type');
+				if(empty($_POST['audience']))				array_push($error, 'Missing Field: Audience');
+
+				//Go to function to insert data into database.
+				if(empty($error)) $classAdded = $this->addUpdateClass();
+				//If database insert failed, push error.
+				if(!$classAdded && empty($error)) array_push($error, 'An error has occurred while trying to submit the class. Please try again.');
+			}
+
+			?>
+			<div class="wrap">
+				<h2>Add a Class</h2>
+
+				<?php
+				//Added for debugging (if set).
+				if($this->options['debug'] && (!empty($_POST) || !empty($debug))) {
+					echo '<div id="message" class="error">';
+
+					if(!empty($_POST))
+						echo '<p><strong>POST</strong></p>
+						<pre>'.print_r($_POST, true).'</pre>';
+
+
+					if(!empty($debug)) {
+						echo '<p><strong>Other</strong></p>';
+
+						foreach($debug as $x => $y)
+							echo '<p>'.$x.': '.$y.'</p>';
+					}
+
+					echo '</div>';
+				}
+
+				//Message if class was added.
+				if($classAdded) {
+					echo '<div id="message" class="updated">
+						<p><strong>The class has been added!</strong></p>
 					</div>';
+				}
+				//Message if an error occurred.
+				else if(!empty($error)) {
+					echo '<div id="message" class="error">
+						<p><strong>';
+
+						foreach($error as $e) echo $e.'<br />';
+
+						echo '</strong></p>
+					</div>';
+				}
+
+				?>
+				<form action="" method="post">
+					<table class="form-table">
+						<tr>
+							<th>*Primary Librarian</th>
+							<td><select name="librarian_name"><option value=""></option>
+							<?php
+							$query = "SELECT display_name FROM ".$wpdb->prefix."users ORDER BY display_name";
+							$user = $wpdb->get_results($query);
+
+							foreach($user as $u) {
+								if($u->display_name == "admin") continue;
+								echo '<option value="'.$u->display_name.'"';
+								if($u->display_name == $user_identity) echo ' selected="selected"';
+								echo '>'.$u->display_name.'</option>';
+							}
+							?>
+							</select></td>
+						</tr>
+						<tr>
+							<th>Secondary Librarian</th>
+							<td><select name="librarian2_name"><option value=""></option>
+							<?php
+							foreach($user as $u) {
+								if($u->display_name == "admin") continue;
+								echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';
+							}
+							?>
+							</select></td>
+						</tr>
+						<tr>
+							<th>*Instructor Name</th>
+							<td><input type="text" name="instructor_name" /></td>
+						</tr>
+						<tr>
+							<th>Instructor Email</th>
+							<td><input type="email" name="instructor_email" /></td>
+						</tr>
+						<tr>
+							<th>Instructor Phone</th>
+							<td><input type="tel" name="instructor_phone" /></td>
+						</tr>
+						<tr>
+							<th>Class Description</th>
+							<td><textarea name="class_description"></textarea></td>
+						</tr>
+						<tr>
+							<th>*Department/Group</th>
+							<td><select name="department_group">
+								<option value="">&nbsp;</option>
+								<option value="abc">ABC</option>
+								<option value="xyz">XYZ</option>
+							</select></td>
+						</tr>
+						<tr>
+							<th>Course Number</th>
+							<td><input type="text" name="course_number" /></td>
+						</tr>
+						<tr>
+							<th>*Class Date</th>
+							<td><input type="date" name="class_date" value="<?php echo date('Y-m-d'); ?>" /></td>
+						</tr>
+						<tr>
+							<th>*Class Time</th>
+							<?php
+							date_default_timezone_set('EST5EDT');
+							$minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
+							$time = date('H:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00');
+							?>
+							<td><input type="time" name="class_time" value="<?php echo $time; ?>" /> <label>*Length</label>
+								<select name="class_length">
+									<option value="0">&nbsp;</option>
+									<option value="15">15 minutes</option>
+									<option value="30">30 minutes</option>
+									<option value="45">45 minutes</option>
+									<option value="60">1 hour</option>
+									<option value="75">1 hour 15 minutes</option>
+									<option value="90">1 hour 30 minutes</option>
+									<option value="105">1 hour 45 minutes</option>
+									<option value="120">2 hours</option>
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<th>*Class Location</th>
+							<td><select name="class_location">
+								<option value="">&nbsp;</option>
+								<option value="classroom 1">Classroom 1</option>
+								<option value="classroom 2">Classroom 2</option>
+							</select></td>
+						</tr>
+						<tr>
+							<th>*Class Type</th>
+							<td><select name="class_type">
+								<option value="">&nbsp;</option>
+								<option value="traditional">Traditional</option>
+								<option value="workshop">Workshop</option>
+							</select></td>
+						</tr>
+						<tr>
+							<th>*Audience</th>
+							<td><select name="audience">
+								<option value="">&nbsp;</option>
+								<option value="undergrad">Undergrad</option>
+								<option value="graduate">Graduate</option>
+							</select></td>
+						</tr>
+						<tr>
+							<th>Option 1</th>
+							<td><input type="checkbox" name="bool1" />
+						</tr>
+						<tr>
+							<th>Option 2</th>
+							<td><input type="checkbox" name="bool2" />
+						</tr>
+						<tr>
+							<th>Option 3</th>
+							<td><input type="checkbox" name="bool3" />
+						</tr>
+						<tr>
+							<th>Number of Students Attended</th>
+							<td><input type="number" name="attendance" /></td>
+						</tr>
+					</table>
+
+					<?php wp_nonce_field(self::SLUG.'_add_class', self::SLUG.'_nonce'); ?>
+
+					<p class="submit">
+						<input type="submit" name="submitted" class="button-primary" value="Add Class" />
+					</p>
+				</form>
+			</div>
+			<?php
+		}
+
+
+		/*
+			Function: addUpdateClass
+				Adds or updates a class listing in the database.  Handles the sanitation of
+				all of the inputs.
+
+			Inputs:
+				id	-	The id of the entry being updated (if applicable).
+
+			Returns:
+				true	-	True if successfully added or updated an entry.
+				false	-	False if entry was not added/updated.
+		*/
+		private function addUpdateClass($id = NULL) {
+			global $wpdb, $user_email;
+			get_currentuserinfo();
+
+			$data = array(
+				'librarian_name'		=>	$_POST['librarian_name'],
+				'instructor_name'		=>	$_POST['instructor_name'],
+				'class_location'		=>	$_POST['class_location'],
+				'class_type'			=>	$_POST['class_type'],
+				'audience'				=>	$_POST['audience'],
+				'department_group'	=>	$_POST['department_group'],
+				'last_updated_by'		=>	$user_email
+			);
+
+			$data['class_start'] = $_POST['class_date'].' '.$_POST['class_time'];
+			$data['class_end'] = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
+			$data['bool1'] = isset($_POST['bool1']) ? 1 : 0;
+			$data['bool2'] = isset($_POST['bool2']) ? 1 : 0;
+			$data['bool3'] = isset($_POST['bool3']) ? 1 : 0;
+
+			if(!empty($_POST['librarian2_name']))		$data['librarian2_name'] = $_POST['librarian2_name'];
+			if(!empty($_POST['instructor_email']))		$data['instructor_email'] = $_POST['instructor_email'];
+			if(!empty($_POST['instructor_phone']))		$data['instructor_phone'] = $_POST['instructor_phone'];
+			if(!empty($_POST['class_description']))	$data['class_description'] = $_POST['class_description'];
+			if(!empty($_POST['course_number']))			$data['course_number'] = $_POST['course_number'];
+			if(!empty($_POST['attendance']))				$data['attendance'] = $_POST['attendance'];
+
+			return $wpdb->insert($this->table['posts'], $data);
+		}
+
+
+		/*
+			Function: fieldsPage
+				Allows manipulation of the adjustable fields.
+
+			Outputs:
+				HTML for the fields page.
+		*/
+		public function fieldsPage() {
+			if(!current_user_can('manage_options')) {
+				wp_die('You do not have sufficient permissions to access this page.');
+			}
+
+			global $wpdb;
+
+			?>
+			<div class="wrap">
+				<h2>Fields</h2>
+				<form action="" method="post">
+					<h3>Department/Group</h3>
+
+					<h3>Class Location</h3>
+
+					<h3>Class Type</h3>
+
+					<h3>Audience</h3>
+
+					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
+
+					<p class="submit">
+						<input type="submit" name="submitted" class="button-primary" value="Save Changes" />
+					</p>
+				</form>
+			</div>
+			<?php
 		}
 
 
