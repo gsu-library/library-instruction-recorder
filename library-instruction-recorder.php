@@ -3,13 +3,13 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 0.0.1
+   Version: 0.1.0
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
-*/
 
-/*
+
+
 	Library Instruction Recorder - A WordPress Plugin
 	Copyright (C) 2013 Georgia State University Library
 
@@ -25,9 +25,9 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
-/*
+
+
 	Additional Natural Docs info here maybe.
 */
 
@@ -44,7 +44,7 @@ if(!class_exists('LIR')) {
 		const SLUG = 'LIR';
 		const OPTIONS = 'lir_options';
 		const OPTIONS_GROUP = 'lir_options_group';
-		const VERSION = '0.0.1';
+		const VERSION = '0.1.0';
 		private $options;
 		private $table;
 
@@ -123,6 +123,7 @@ if(!class_exists('LIR')) {
 							bool2 tinyint(1) NOT NULL DEFAULT '0',
 							bool3 tinyint(1) NOT NULL DEFAULT '0',
 							attendance smallint(6) NOT NULL DEFAULT '-1',
+							owner_id bigint(20) NOT NULL,
 							last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 							last_updated_by varchar(255) NOT NULL,
 							PRIMARY KEY  (id)
@@ -133,7 +134,7 @@ if(!class_exists('LIR')) {
 			//Meta table.
 			$query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.'_meta'." (
 							field varchar(255) NOT NULL,
-							value varchar(255) NOT NULL,
+							value mediumtext NOT NULL,
 							PRIMARY KEY  (field)
 						) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
@@ -157,7 +158,7 @@ if(!class_exists('LIR')) {
 
 			//Remove custom database tables (post & meta).
 			global $wpdb;
-			$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
+			//$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
 		}
 
 
@@ -216,6 +217,7 @@ if(!class_exists('LIR')) {
 			if($parent_file != self::SLUG) return;
 
 			wp_enqueue_script(self::SLUG.'_admin_JS', plugins_url('js/admin.js', __FILE__));
+			wp_enqueue_script('jquery');
 			wp_enqueue_style(self::SLUG.'_admin_CSS', plugins_url('css/admin.css', __FILE__));
 		}
 
@@ -239,39 +241,52 @@ if(!class_exists('LIR')) {
 
 			?>
 			<div class="wrap">
-				<h2><?php echo $this->options['name']; ?></h2>
-				<h3>Upcoming Classes <a style="font-weight:normal;" href="<?php echo 'admin.php?page='.self::SLUG.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h3>
-				<table>
-				<?php
-				//Post a table row for each class in $result.
-				foreach($result as $class) {
-					echo '<tr><td>'.$class->department_group.' '.$class->course_number.'</td>';
+				<h2><?php echo $this->options['name']; ?> <a href="<?php echo 'admin.php?page='.self::SLUG.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
+				<h3>Upcoming Classes</h3>
+				<table class="widefat fixed">
+					<thead><tr><th class="check-column">&nbsp;</th><th class="sortable"><a href="#">Department/Group</a></th><th>Course #</th>
+						<th class="date-column">Date/Time</th><th>Primary Librarian</th><th>Instructor</th><th>Details</th></tr></thead>
+					<tfoot><tr><th class="check-column">&nbsp;</th><th class="sortable"><a href="#">Department/Group</a></th><th>Course #</th>
+						<th class="date-column">Date/Time</th><th>Primary Librarian</th><th>Instructor</th><th>Details</th></tr></tfoot>
+					<tbody>
 
-					//Display start date & time - end date & time.
-					if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
-						echo '<td>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
-						echo date('g:i A', strtotime($class->class_end)).'</td>';
-					}
-					//If the end time is not on the same day as the start time.
-					else {
-						//****************FINISH THIS
-					}
+					<?php
+					//Post a table row for each class in $result.
+					foreach($result as $class) {
+						if($class->class_description)
+							echo '<tr title="'.$class->class_description.'">';
+						else
+							echo '<tr>';
 
-					echo '<td>'.$class->librarian_name.'</td>';
+						echo '<th>&nbsp;</th><td>'.$class->department_group.'</td><td>'.$class->course_number.'</td>';
 
-					//Instructor name and email.
-					if($class->instructor_name && $class->instructor_email) {
-						$mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
-						echo '<td><a href="'.$mailto.'">'.$class->instructor_name.'</a></td>';
-					}
-					else
-						echo '<td>'.$class->instructor_name.'</td>';
+						//Display start date & time - end date & time.
+						if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
+							echo '<td>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
+							echo date('g:i A', strtotime($class->class_end)).'</td>';
+						}
+						else { //If the end time is not on the same day as the start time.
+							echo '<td>'.date('n/j/Y (D) g:i A -', strtotime($class->class_start)).'<br />';
+							echo date('n/j/Y (D) g:i A', strtotime($class->class_end)).'</td>';
+						}
 
-					echo '<td><a href="#">Details</a></td>';
+						echo '<td>'.$class->librarian_name.'</td>';
 
-					echo '</tr>';
-				}//End foreach loop.
-				?>
+						//Instructor name and email.
+						if($class->instructor_name && $class->instructor_email) {
+							$mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
+							echo '<td><a href="'.$mailto.'">'.$class->instructor_name.'</a></td>';
+						}
+						else {
+							echo '<td>'.$class->instructor_name.'</td>';
+						}
+
+						echo '<td><a href="#">Details</a></td>';
+						echo '</tr>';
+					}//End foreach loop.
+					?>
+
+					</tbody>
 				</table>
 			</div>
 			<?php
@@ -327,9 +342,10 @@ if(!class_exists('LIR')) {
 				if($this->options['debug'] && (!empty($_POST) || !empty($debug))) {
 					echo '<div id="message" class="error">';
 
-					if(!empty($_POST))
+					if(!empty($_POST)) {
 						echo '<p><strong>POST</strong></p>
 						<pre>'.print_r($_POST, true).'</pre>';
+					}
 
 
 					if(!empty($debug)) {
@@ -508,7 +524,7 @@ if(!class_exists('LIR')) {
 				false	-	False if entry was not added/updated.
 		*/
 		private function addUpdateClass($id = NULL) {
-			global $wpdb, $user_email;
+			global $wpdb, $current_user;
 			get_currentuserinfo();
 
 			$data = array(
@@ -518,7 +534,8 @@ if(!class_exists('LIR')) {
 				'class_type'			=>	$_POST['class_type'],
 				'audience'				=>	$_POST['audience'],
 				'department_group'	=>	$_POST['department_group'],
-				'last_updated_by'		=>	$user_email
+				'last_updated_by'		=>	$current_user->user_email,
+				'owner_id'				=>	$current_user->id
 			);
 
 			$data['class_start'] = $_POST['class_date'].' '.$_POST['class_time'];
@@ -551,12 +568,59 @@ if(!class_exists('LIR')) {
 			}
 
 			global $wpdb;
+			//CREATE AND POPULATE VARS FOR EACH SECTION BELOW, UPDATE THEM IF POST
+			//department_group_values
+			$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
+			echo '<pre>'.print_r($departmentGroup, true).'</pre>';
+			//class_location_values
+			//class_type_values
+			//audience_values
+
+			//Check for form submission and do appropriate action.
+			if(isset($_POST[self::SLUG.'_nonce']) && wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_fields')) {
+				if(!empty($_POST['deptGroupAdd'])) { echo 'in deptGroupAdd query seciont thingy';
+					if($departmentGroup) {
+						array_push($deparmentGroup, $_POST['deptGroupTB']);
+						$wpdb->update($this->table['meta'], array('department_group_values' => serialize($departmentGroup)), array('fields', 'department_group_values'));
+					}
+					else {
+						array_push($deparmentGroup, $_POST['deptGroupTB']);
+						$wpdb->insert($this->table['meta'], array('department_group_values' => serialize($departmentGroup)));
+					}
+				}
+				if(!empty($_POST['']));
+			}
 
 			?>
 			<div class="wrap">
 				<h2>Fields</h2>
+
+				<?php
+				//Added for debugging (if set).
+				if($this->options['debug'] && !empty($_POST)) {
+					echo '<div id="message" class="error">';
+
+					if(!empty($_POST)) {
+						echo '<p><strong>POST</strong></p>
+						<pre>'.print_r($_POST, true).'</pre>';
+					}
+
+					echo '</div>';
+				}
+				?>
+
 				<form action="" method="post">
 					<h3>Department/Group</h3>
+					<input id="deptGroupTB" name="deptGroupTB" type="text" /><br /><br />
+					<input id="deptGroupAdd" name="deptGroupAdd" type="submit" class="button-secondary" value="Add Dept/Group" /><br /><br />
+					<select id="deptGroupSB" name="deptGroupSB" size="10">
+					<?php
+					foreach($departmentGroup as $x) {
+						echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+					}
+					?>
+					</select><br /><br />
+					<input id="deptGroupRemove" name="deptGroupRemove" type="submit" class="button-secondary" value="Remove Dept/Group" />
 
 					<h3>Class Location</h3>
 

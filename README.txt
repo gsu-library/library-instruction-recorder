@@ -11,7 +11,7 @@ About: License
 	<GPLv3>
 
 About: Version
-	0.0.1
+	0.1.0
 
 About: Version History
-	0.0.1	-	?
+	0.1.0	-	?

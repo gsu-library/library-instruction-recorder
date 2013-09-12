@@ -1,2 +1,13 @@
-/* CSS Document */
+/*
+	Upcoming Classes
+*/
+.widefat .date-column {
+	width: 240px;	
+}
 
+/*
+	Fields
+*/
+#deptGroupSB {
+	height: auto;
+}
