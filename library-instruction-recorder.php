@@ -65,6 +65,8 @@ if(!class_exists('LIR')) {
 			add_action('admin_enqueue_scripts', array(&$this, 'addJSCSS'));
 			add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
+
+			//MOVE BELOW THIS LINE INTO AN INIT?
 			//Load options.
 			$this->options = get_option(self::OPTIONS, NULL);
 
@@ -425,8 +427,12 @@ if(!class_exists('LIR')) {
 							<th>*Department/Group</th>
 							<td><select name="department_group">
 								<option value="">&nbsp;</option>
-								<option value="abc">ABC</option>
-								<option value="xyz">XYZ</option>
+								<?php
+								$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
+
+								foreach($departmentGroup as $x)
+									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								?>
 							</select></td>
 						</tr>
 						<tr>
@@ -462,8 +468,12 @@ if(!class_exists('LIR')) {
 							<th>*Class Location</th>
 							<td><select name="class_location">
 								<option value="">&nbsp;</option>
-								<option value="classroom 1">Classroom 1</option>
-								<option value="classroom 2">Classroom 2</option>
+								<?php
+								$classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
+
+								foreach($classLocation as $x)
+									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								?>
 							</select></td>
 						</tr>
 						<tr>
@@ -569,27 +579,96 @@ if(!class_exists('LIR')) {
 
 			global $wpdb;
 			//CREATE AND POPULATE VARS FOR EACH SECTION BELOW, UPDATE THEM IF POST
-			//department_group_values
 			$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
-			echo '<pre>'.print_r($departmentGroup, true).'</pre>';
-			//class_location_values
+			$classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
 			//class_type_values
 			//audience_values
+			$bool1Value = $wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool1_value'");
+			$bool2Value = $wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool2_value'");
+			$bool3Value = $wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool3_value'");
 
 			//Check for form submission and do appropriate action.
 			if(isset($_POST[self::SLUG.'_nonce']) && wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_fields')) {
-				if(!empty($_POST['deptGroupAdd'])) { echo 'in deptGroupAdd query seciont thingy';
+				//Add a department / group field to the database.
+				if(!empty($_POST['deptGroupAdd']) && !empty($_POST['deptGroupTB'])) { //CHECK FOR WHITESPACE
 					if($departmentGroup) {
-						array_push($deparmentGroup, $_POST['deptGroupTB']);
-						$wpdb->update($this->table['meta'], array('department_group_values' => serialize($departmentGroup)), array('fields', 'department_group_values'));
+						array_push($departmentGroup, $_POST['deptGroupTB']);
+						natcasesort($departmentGroup);
+						$wpdb->update($this->table['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
 					}
 					else {
-						array_push($deparmentGroup, $_POST['deptGroupTB']);
-						$wpdb->insert($this->table['meta'], array('department_group_values' => serialize($departmentGroup)));
+						$departmentGroup = array();
+						array_push($departmentGroup, $_POST['deptGroupTB']);
+						$wpdb->insert($this->table['meta'], array('field' => 'department_group_values', 'value' => serialize($departmentGroup)));
 					}
 				}
-				if(!empty($_POST['']));
-			}
+				//Remove a department / group field from the database.
+				else if(!empty($_POST['deptGroupRemove'])) {
+					$temp = $_POST['deptGroupSB'] + 1;
+
+					if(!empty($temp)) {
+						unset($departmentGroup[$_POST['deptGroupSB']]);
+
+						if($departmentGroup)
+							$wpdb->update($this->table['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
+						else
+							$wpdb->delete($this->table['meta'], array('field' => 'department_group_values'));
+					}
+				}
+				//Add a class location field to the database.
+				if(!empty($_POST['classLocAdd']) && !empty($_POST['classLocTB'])) { //CHECK FOR WHITESPACE
+					if($classLocation) {
+						array_push($classLocation, $_POST['classLocTB']);
+						natcasesort($classLocation);
+						$wpdb->update($this->table['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
+					}
+					else {
+						$classLocation = array();
+						array_push($classLocation, $_POST['classLocTB']);
+						$wpdb->insert($this->table['meta'], array('field' => 'class_location_values', 'value' => serialize($classLocation)));
+					}
+				}
+				//Remove a class location field from the database.
+				else if(!empty($_POST['classLocRemove'])) {
+					$temp = $_POST['classLocSB'] + 1;
+
+					if(!empty($temp)) {
+						unset($classLocation[$_POST['classLocSB']]);
+
+						if($classLocation)
+							$wpdb->update($this->table['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
+						else
+							$wpdb->delete($this->table['meta'], array('field' => 'class_location_values'));
+					}
+				}
+				//Adds bool options to the database.
+				else if(!empty($_POST['boolSave'])) {
+					if(!empty($_POST['bool1Value'])) {
+						if($bool1Value)
+							$wpdb->update($this->table['meta'], array('value' => $_POST['bool1Value']), array('field' => 'bool1_value'));
+						else
+							$wpdb->insert($this->table['meta'], array('field' => 'bool1_value', 'value' => $_POST['bool1Value']));
+
+						$bool1Value = $_POST['bool1Value'];
+					}
+					if(!empty($_POST['bool2Value'])) {
+						if($bool2Value)
+							$wpdb->update($this->table['meta'], array('value' => $_POST['bool2Value']), array('field' => 'bool2_value'));
+						else
+							$wpdb->insert($this->table['meta'], array('field' => 'bool2_value', 'value' => $_POST['bool2Value']));
+
+						$bool2Value = $_POST['bool2Value'];
+					}
+					if(!empty($_POST['bool3Value'])) {
+						if($bool3Value)
+							$wpdb->update($this->table['meta'], array('value' => $_POST['bool3Value']), array('field' => 'bool3_value'));
+						else
+							$wpdb->insert($this->table['meta'], array('field' => 'bool3_value', 'value' => $_POST['bool3Value']));
+
+						$bool3Value = $_POST['bool3Value'];
+					}
+				}
+			}// End if nonce is set.
 
 			?>
 			<div class="wrap">
@@ -611,28 +690,58 @@ if(!class_exists('LIR')) {
 
 				<form action="" method="post">
 					<h3>Department/Group</h3>
-					<input id="deptGroupTB" name="deptGroupTB" type="text" /><br /><br />
-					<input id="deptGroupAdd" name="deptGroupAdd" type="submit" class="button-secondary" value="Add Dept/Group" /><br /><br />
+					<input name="deptGroupTB" type="text" />
+					<input name="deptGroupAdd" type="submit" class="button-secondary" value="Add Dept/Group" /><br /><br />
 					<select id="deptGroupSB" name="deptGroupSB" size="10">
 					<?php
-					foreach($departmentGroup as $x) {
-						echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+					$i = 1;
+					foreach($departmentGroup as $i => $x) {
+						echo '<option value="'.$i.'">'.$x.'</option>';
 					}
 					?>
 					</select><br /><br />
-					<input id="deptGroupRemove" name="deptGroupRemove" type="submit" class="button-secondary" value="Remove Dept/Group" />
+					<input name="deptGroupRemove" type="submit" class="button-secondary" value="Remove Dept/Group" />
 
 					<h3>Class Location</h3>
+					<input name="classLocTB" type="text" />
+					<input name="classLocAdd" type="submit" class="button-secondary" value="Add Class Location" /><br /><br />
+					<select id="classLocSB" name="classLocSB" size="10">
+					<?php
+					$i = 1;
+					foreach($classLocation as $i => $x) {
+						echo '<option value="'.$i.'">'.$x.'</option>';
+					}
+					?>
+					</select><br /><br />
+					<input name="classLocRemove" type="submit" class="button-secondary" value="Remove Class Location" />
 
 					<h3>Class Type</h3>
 
 					<h3>Audience</h3>
 
+					<h3>Bools</h3>
+					<h4>Bool 1</h4>
+					<p>Name: <input type="text" name="bool1Value" value="<?php echo $bool1Value; ?>" />
+					Enabled <input type="radio" name="bool1Enabled" value="1" />
+					Disabled <input type="radio" name="bool1Enabled" value="0" /></p>
+
+					<h4>Bool 2</h4>
+					<p>Name: <input type="text" name="bool2Value" value="<?php echo $bool2Value; ?>" />
+					Enabled <input type="radio" name="bool2Enabled" value="1" />
+					Disabled <input type="radio" name="bool2Enabled" value="0" /></p>
+
+					<h4>Bool 3</h4>
+					<p>Name: <input type="text" name="bool3Value" value="<?php echo $bool3Value; ?>" />
+					Enabled <input type="radio" name="bool3Enabled" value="1" />
+					Disabled <input type="radio" name="bool3Enabled" value="0" /></p>
+
+					<input name="boolSave" type="submit" class="button-secondary" value="Save Bools" />
+
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
 
-					<p class="submit">
+					<!--<p class="submit">
 						<input type="submit" name="submitted" class="button-primary" value="Save Changes" />
-					</p>
+					</p>-->
 				</form>
 			</div>
 			<?php
