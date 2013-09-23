@@ -384,8 +384,7 @@ if(!class_exists('LIR')) {
 							<th>*Primary Librarian</th>
 							<td><select name="librarian_name"><option value=""></option>
 							<?php
-							$query = "SELECT display_name FROM ".$wpdb->prefix."users ORDER BY display_name";
-							$user = $wpdb->get_results($query);
+							$user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->prefix."users ORDER BY display_name");
 
 							foreach($user as $u) {
 								if($u->display_name == "admin") continue;
@@ -480,30 +479,52 @@ if(!class_exists('LIR')) {
 							<th>*Class Type</th>
 							<td><select name="class_type">
 								<option value="">&nbsp;</option>
-								<option value="traditional">Traditional</option>
-								<option value="workshop">Workshop</option>
+								<?php
+								$classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
+
+								foreach($classType as $x)
+									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								?>
 							</select></td>
 						</tr>
 						<tr>
 							<th>*Audience</th>
 							<td><select name="audience">
 								<option value="">&nbsp;</option>
-								<option value="undergrad">Undergrad</option>
-								<option value="graduate">Graduate</option>
+								<?php
+								$audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
+
+								foreach($audience as $x)
+									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								?>
 							</select></td>
 						</tr>
+						<?php
+						$bools = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool_info'"));
+						
+						if($bools['bool1Enabled']) {
+						?>
 						<tr>
-							<th>Option 1</th>
+							<th><?php echo $bools['bool1Value']; ?></th>
 							<td><input type="checkbox" name="bool1" />
 						</tr>
+						<?php
+						} if($bools['bool2Enabled']) {
+						?>
 						<tr>
-							<th>Option 2</th>
+							<th><?php echo $bools['bool2Value']; ?></th>
 							<td><input type="checkbox" name="bool2" />
 						</tr>
+						<?php
+						} if($bools['bool3Enabled']) {
+						?>
 						<tr>
-							<th>Option 3</th>
+							<th><?php echo $bools['bool3Value']; ?></th>
 							<td><input type="checkbox" name="bool3" />
 						</tr>
+						<?php
+						}
+						?>
 						<tr>
 							<th>Number of Students Attended</th>
 							<td><input type="number" name="attendance" /></td>
@@ -581,11 +602,9 @@ if(!class_exists('LIR')) {
 			//CREATE AND POPULATE VARS FOR EACH SECTION BELOW, UPDATE THEM IF POST
 			$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
 			$classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
-			//class_type_values
-			//audience_values
-			$bool1Value = $wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool1_value'");
-			$bool2Value = $wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool2_value'");
-			$bool3Value = $wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool3_value'");
+			$classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
+			$audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
+			$bools = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool_info'"));
 
 			//Check for form submission and do appropriate action.
 			if(isset($_POST[self::SLUG.'_nonce']) && wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_fields')) {
@@ -641,32 +660,73 @@ if(!class_exists('LIR')) {
 							$wpdb->delete($this->table['meta'], array('field' => 'class_location_values'));
 					}
 				}
+				//Add a class type field to the database.
+				if(!empty($_POST['classTypeAdd']) && !empty($_POST['classTypeTB'])) { //CHECK FOR WHITESPACE
+					if($classType) {
+						array_push($classType, $_POST['classTypeTB']);
+						natcasesort($classType);
+						$wpdb->update($this->table['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
+					}
+					else {
+						$classType = array();
+						array_push($classType, $_POST['classTypeTB']);
+						$wpdb->insert($this->table['meta'], array('field' => 'class_type_values', 'value' => serialize($classType)));
+					}
+				}
+				//Remove a class type field from the database.
+				else if(!empty($_POST['classTypeRemove'])) {
+					$temp = $_POST['classTypeSB'] + 1;
+
+					if(!empty($temp)) {
+						unset($classType[$_POST['classTypeSB']]);
+
+						if($classType)
+							$wpdb->update($this->table['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
+						else
+							$wpdb->delete($this->table['meta'], array('field' => 'class_type_values'));
+					}
+				}
+				//Add an audience field to the database.
+				if(!empty($_POST['audienceAdd']) && !empty($_POST['audienceTB'])) { //CHECK FOR WHITESPACE
+					if($audience) {
+						array_push($audience, $_POST['audienceTB']);
+						natcasesort($audience);
+						$wpdb->update($this->table['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
+					}
+					else {
+						$audience = array();
+						array_push($audience, $_POST['audienceTB']);
+						$wpdb->insert($this->table['meta'], array('field' => 'audience_values', 'value' => serialize($audience)));
+					}
+				}
+				//Remove an audience field from the database.
+				else if(!empty($_POST['audienceRemove'])) {
+					$temp = $_POST['audienceSB'] + 1;
+
+					if(!empty($temp)) {
+						unset($audience[$_POST['audienceSB']]);
+
+						if($audience)
+							$wpdb->update($this->table['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
+						else
+							$wpdb->delete($this->table['meta'], array('field' => 'audience_values'));
+					}
+				}
 				//Adds bool options to the database.
 				else if(!empty($_POST['boolSave'])) {
-					if(!empty($_POST['bool1Value'])) {
-						if($bool1Value)
-							$wpdb->update($this->table['meta'], array('value' => $_POST['bool1Value']), array('field' => 'bool1_value'));
-						else
-							$wpdb->insert($this->table['meta'], array('field' => 'bool1_value', 'value' => $_POST['bool1Value']));
-
-						$bool1Value = $_POST['bool1Value'];
-					}
-					if(!empty($_POST['bool2Value'])) {
-						if($bool2Value)
-							$wpdb->update($this->table['meta'], array('value' => $_POST['bool2Value']), array('field' => 'bool2_value'));
-						else
-							$wpdb->insert($this->table['meta'], array('field' => 'bool2_value', 'value' => $_POST['bool2Value']));
-
-						$bool2Value = $_POST['bool2Value'];
-					}
-					if(!empty($_POST['bool3Value'])) {
-						if($bool3Value)
-							$wpdb->update($this->table['meta'], array('value' => $_POST['bool3Value']), array('field' => 'bool3_value'));
-						else
-							$wpdb->insert($this->table['meta'], array('field' => 'bool3_value', 'value' => $_POST['bool3Value']));
-
-						$bool3Value = $_POST['bool3Value'];
-					}
+					if(empty($bools)) $insert = true; else $insert = false;
+					
+					$bools['bool1Value'] = $_POST['bool1Value'];
+					$bools['bool1Enabled'] = $_POST['bool1Enabled'];
+					$bools['bool2Value'] = $_POST['bool2Value'];
+					$bools['bool2Enabled'] = $_POST['bool2Enabled'];
+					$bools['bool3Value'] = $_POST['bool3Value'];
+					$bools['bool3Enabled'] = $_POST['bool3Enabled'];
+					
+					if($insert)
+						$wpdb->insert($this->table['meta'], array('field' => 'bool_info', 'value' => serialize($bools)));
+					else
+						$wpdb->update($this->table['meta'], array('value' => serialize($bools)), array('field' => 'bool_info'));
 				}
 			}// End if nonce is set.
 
@@ -700,8 +760,12 @@ if(!class_exists('LIR')) {
 					}
 					?>
 					</select><br /><br />
+					
 					<input name="deptGroupRemove" type="submit" class="button-secondary" value="Remove Dept/Group" />
+					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
+				</form>
 
+				<form action="" method="post">
 					<h3>Class Location</h3>
 					<input name="classLocTB" type="text" />
 					<input name="classLocAdd" type="submit" class="button-secondary" value="Add Class Location" /><br /><br />
@@ -713,30 +777,63 @@ if(!class_exists('LIR')) {
 					}
 					?>
 					</select><br /><br />
+					
 					<input name="classLocRemove" type="submit" class="button-secondary" value="Remove Class Location" />
+					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
+				</form>
 
+				<form action="" method="post">
 					<h3>Class Type</h3>
-
+					<input name="classTypeTB" type="text" />
+					<input name="classTypeAdd" type="submit" class="button-secondary" value="Add Class Type" /><br /><br />
+					<select id="classTypeSB" name="classTypeSB" size="10">
+					<?php
+					$i = 1;
+					foreach($classType as $i => $x) {
+						echo '<option value="'.$i.'">'.$x.'</option>';
+					}
+					?>
+					</select><br /><br />
+					
+					<input name="classTypeRemove" type="submit" class="button-secondary" value="Remove Class Type" />
+					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
+				</form>
+				
+				<form action="" method="post">
 					<h3>Audience</h3>
+					<input name="audienceTB" type="text" />
+					<input name="audienceAdd" type="submit" class="button-secondary" value="Add Audience" /><br /><br />
+					<select id="audienceSB" name="audienceSB" size="10">
+					<?php
+					$i = 1;
+					foreach($audience as $i => $x) {
+						echo '<option value="'.$i.'">'.$x.'</option>';
+					}
+					?>
+					</select><br /><br />
+					
+					<input name="audienceRemove" type="submit" class="button-secondary" value="Remove Audience" />
+					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
+				</form>
 
+				<form action="" method="post">
 					<h3>Bools</h3>
 					<h4>Bool 1</h4>
-					<p>Name: <input type="text" name="bool1Value" value="<?php echo $bool1Value; ?>" />
-					Enabled <input type="radio" name="bool1Enabled" value="1" />
-					Disabled <input type="radio" name="bool1Enabled" value="0" /></p>
+					<p><label>Name: <input type="text" name="bool1Value" value="<?php echo $bools['bool1Value']; ?>" /></label>
+					<label>Enabled <input type="radio" name="bool1Enabled" value="1" <?php if($bools['bool1Enabled']) echo 'checked="checked "'; ?> /></label>
+					<label>Disabled <input type="radio" name="bool1Enabled" value="0" <?php if(!$bools['bool1Enabled']) echo 'checked="checked "'; ?> /></p></label>
 
 					<h4>Bool 2</h4>
-					<p>Name: <input type="text" name="bool2Value" value="<?php echo $bool2Value; ?>" />
-					Enabled <input type="radio" name="bool2Enabled" value="1" />
-					Disabled <input type="radio" name="bool2Enabled" value="0" /></p>
+					<p><label>Name: <input type="text" name="bool2Value" value="<?php echo $bools['bool2Value']; ?>" /></label>
+					<label>Enabled <input type="radio" name="bool2Enabled" value="1" <?php if($bools['bool2Enabled']) echo 'checked="checked "'; ?> /></label>
+					<label>Disabled <input type="radio" name="bool2Enabled" value="0" <?php if(!$bools['bool2Enabled']) echo 'checked="checked "'; ?> /></p></label>
 
 					<h4>Bool 3</h4>
-					<p>Name: <input type="text" name="bool3Value" value="<?php echo $bool3Value; ?>" />
-					Enabled <input type="radio" name="bool3Enabled" value="1" />
-					Disabled <input type="radio" name="bool3Enabled" value="0" /></p>
+					<p><label>Name: <input type="text" name="bool3Value" value="<?php echo $bools['bool3Value']; ?>" /></label>
+					<label>Enabled <input type="radio" name="bool3Enabled" value="1" <?php if($bools['bool3Enabled']) echo 'checked="checked "'; ?> /></label>
+					<label>Disabled <input type="radio" name="bool3Enabled" value="0" <?php if(!$bools['bool3Enabled']) echo 'checked="checked "'; ?> /></p></label>
 
 					<input name="boolSave" type="submit" class="button-secondary" value="Save Bools" />
-
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
 
 					<!--<p class="submit">

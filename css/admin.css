@@ -9,6 +9,8 @@
 	Fields
 */
 #deptGroupSB,
-#classLocSB {
+#classLocSB,
+#classTypeSB,
+#audienceSB {
 	height: auto;
 }
