@@ -25,10 +25,6 @@
 
 	You should have received a copy of the GNU General Public License
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-
-
-	Additional Natural Docs info here maybe.
 */
 
 
@@ -153,13 +149,12 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
-			//MOVE THIS TO THE UINSTALL HOOK/FILE WHEN READY TO GO LIVE***********
 			//MAKE THIS A DEBUG STATEMENT?
 			//Remove options saved in wp_options table.
 			//delete_option(self::OPTIONS);
 
 			//Remove custom database tables (post & meta).
-			global $wpdb;
+			//global $wpdb;
 			//$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
 		}
 
@@ -186,7 +181,7 @@ if(!class_exists('LIR')) {
 				Creates a menu and submenu on the dashboard for plugin usage and administration.
 
 			See Also:
-				<defaultPage>, <addClassPage>, and <settingsPage>
+				<defaultPage>, <addClassPage>, <fieldsPage>, and <settingsPage>
 		*/
 		public function createMenu() {
 			add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
@@ -203,7 +198,8 @@ if(!class_exists('LIR')) {
 
 
 		/*
-
+			Function: adminInit
+				Registers an option group so that the settings page works and can be sanitized.
 		*/
 		public function adminInit() {
 			register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
@@ -211,7 +207,9 @@ if(!class_exists('LIR')) {
 
 
 		/*
-
+			Function: addJSCSS
+				Adds custom CSS and JavaScript links to LIR pages.  Also makes sure jquery is loaded on
+				those pages as well.
 		*/
 		public function addJSCSS() {
 			global $parent_file;
@@ -227,7 +225,8 @@ if(!class_exists('LIR')) {
 		/*
 			Function: defaultPage
 				The default page displayed when clicking on the LIR menu item.  This page shows
-				a list of upcoming classes while allowing users to edit the entries.
+				a list of upcoming classes while allowing users to see the details, edit the entries,
+				and delete entries.
 
 			Outputs:
 				HTML for the default page.
@@ -297,7 +296,8 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: addClassPage
-				The add a class page allows users to add a class to the instruction recorder.
+				The add a class page allows users to add a class to the instruction recorder. This
+				page will also be used for editing existing entries.
 
 			Outputs:
 				HTML for the add a class page.
@@ -501,7 +501,7 @@ if(!class_exists('LIR')) {
 						</tr>
 						<?php
 						$bools = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool_info'"));
-						
+
 						if($bools['bool1Enabled']) {
 						?>
 						<tr>
@@ -715,14 +715,14 @@ if(!class_exists('LIR')) {
 				//Adds bool options to the database.
 				else if(!empty($_POST['boolSave'])) {
 					if(empty($bools)) $insert = true; else $insert = false;
-					
+
 					$bools['bool1Value'] = $_POST['bool1Value'];
 					$bools['bool1Enabled'] = $_POST['bool1Enabled'];
 					$bools['bool2Value'] = $_POST['bool2Value'];
 					$bools['bool2Enabled'] = $_POST['bool2Enabled'];
 					$bools['bool3Value'] = $_POST['bool3Value'];
 					$bools['bool3Enabled'] = $_POST['bool3Enabled'];
-					
+
 					if($insert)
 						$wpdb->insert($this->table['meta'], array('field' => 'bool_info', 'value' => serialize($bools)));
 					else
@@ -760,7 +760,7 @@ if(!class_exists('LIR')) {
 					}
 					?>
 					</select><br /><br />
-					
+
 					<input name="deptGroupRemove" type="submit" class="button-secondary" value="Remove Dept/Group" />
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
 				</form>
@@ -777,7 +777,7 @@ if(!class_exists('LIR')) {
 					}
 					?>
 					</select><br /><br />
-					
+
 					<input name="classLocRemove" type="submit" class="button-secondary" value="Remove Class Location" />
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
 				</form>
@@ -794,11 +794,11 @@ if(!class_exists('LIR')) {
 					}
 					?>
 					</select><br /><br />
-					
+
 					<input name="classTypeRemove" type="submit" class="button-secondary" value="Remove Class Type" />
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
 				</form>
-				
+
 				<form action="" method="post">
 					<h3>Audience</h3>
 					<input name="audienceTB" type="text" />
@@ -811,7 +811,7 @@ if(!class_exists('LIR')) {
 					}
 					?>
 					</select><br /><br />
-					
+
 					<input name="audienceRemove" type="submit" class="button-secondary" value="Remove Audience" />
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
 				</form>
@@ -847,7 +847,7 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: settingsPage
-				Controls what shows up on the admin page of this plugin.
+				Controls what shows up on the settings page of this plugin.
 
 			Outputs:
 				HTML for adminstration page settings.
@@ -891,7 +891,7 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: sanitizeSettings
-				Sanitizes all inputs that are run through the options page.
+				Sanitizes all inputs that are run through the settings page.
 
 			Inputs:
 				input	-	Array of options from the LIR settings page.
@@ -916,7 +916,7 @@ if(!class_exists('LIR')) {
 				input		-	A string containing content.
 
 			Returns:
-				string	-	A modified string.
+				string	-	A modified string of content.
 		*/
 		public function easterEgg($input = '') {
 			return $input . "<p id='Lrrr'><i>I am Lrrr, ruler of the planet Omicron Persei 8!</i></p>";
