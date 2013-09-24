@@ -59,7 +59,7 @@ if(!class_exists('LIR')) {
 			add_action('admin_menu', array(&$this, 'createMenu'));
 			add_action('admin_init', array(&$this, 'adminInit'));
 			add_action('admin_enqueue_scripts', array(&$this, 'addJSCSS'));
-			add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
+			//add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
 
 			//MOVE BELOW THIS LINE INTO AN INIT?
