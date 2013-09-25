@@ -62,12 +62,36 @@ if(!class_exists('LIR')) {
 			//add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
 
-			//MOVE BELOW THIS LINE INTO AN INIT?
+			/*//MOVE BELOW THIS LINE INTO AN INIT?
 			//Load options.
 			$this->options = get_option(self::OPTIONS, NULL);
 
 			//Prep table names.
 			global $wpdb;
+			$this->table = array(
+				'posts'	=>	$wpdb->prefix.self::SLUG.'_posts',
+				'meta'	=>	$wpdb->prefix.self::SLUG.'_meta'
+			);*/
+		}
+
+
+		/*
+			Function: init
+				Initializes some core functionality that should not be activated in the
+				constructor.
+
+			Inputs:
+				wpdb	-	Takes the global variable $wpdb as an input to save on duplication.
+		*/
+		private function init(&$wpdb = NULL) {
+			//If these values are set then return.
+			if(isset($this->options) && isset($this->table)) return;
+			if($wpdb == NULL) global $wpdb;
+			
+			//Load options.
+			$this->options = get_option(self::OPTIONS, NULL);
+
+			//Prep table names.
 			$this->table = array(
 				'posts'	=>	$wpdb->prefix.self::SLUG.'_posts',
 				'meta'	=>	$wpdb->prefix.self::SLUG.'_meta'
@@ -77,12 +101,14 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: activationHook
-				Checks to make sure WordPress is compatible, sets up tables, and sets up options.
+				Checks to make sure WordPress is compatible, sets up tables, and sets up options. *This
+				function cannot call init because it is static.
 		*/
 		public static function activationHook() {
 			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
+			//Make sure WordPress is compatible. 
 			global $wp_version;
 			if(version_compare($wp_version, '3.6', '<'))
 				wp_die('This plugin requires WordPress version 3.6 or higher.');
@@ -154,7 +180,7 @@ if(!class_exists('LIR')) {
 			//delete_option(self::OPTIONS);
 
 			//Remove custom database tables (post & meta).
-			//global $wpdb;
+			global $wpdb;
 			//$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
 		}
 
@@ -184,6 +210,8 @@ if(!class_exists('LIR')) {
 				<defaultPage>, <addClassPage>, <fieldsPage>, and <settingsPage>
 		*/
 		public function createMenu() {
+			$this->init();
+
 			add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
 			//Added so the first submenu item does not have the same title as the main menu item.
 			add_submenu_page(	self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts',
@@ -237,6 +265,8 @@ if(!class_exists('LIR')) {
 			}
 
 			global $wpdb;
+			$this->init($wpdb);
+
 			$query = "SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY class_start, class_end, librarian_name";
 			$result = $wpdb->get_results($query);
 
@@ -311,6 +341,7 @@ if(!class_exists('LIR')) {
 			}
 
 			global $user_identity, $wpdb;
+			$this->init($wpdb);
 			get_currentuserinfo();
 
 			$classAdded = false;
@@ -556,6 +587,7 @@ if(!class_exists('LIR')) {
 		*/
 		private function addUpdateClass($id = NULL) {
 			global $wpdb, $current_user;
+			$this->init($wpdb);
 			get_currentuserinfo();
 
 			$data = array(
@@ -599,6 +631,7 @@ if(!class_exists('LIR')) {
 			}
 
 			global $wpdb;
+			$this->init($wpdb);
 			//CREATE AND POPULATE VARS FOR EACH SECTION BELOW, UPDATE THEM IF POST
 			$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
 			$classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
@@ -859,6 +892,8 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('manage_options')) {
 				wp_die('You do not have sufficient permissions to access this page.');
 			}
+			
+			$this->init();
 
 			?>
 			<div class="wrap">
