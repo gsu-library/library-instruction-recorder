@@ -60,18 +60,6 @@ if(!class_exists('LIR')) {
 			add_action('admin_init', array(&$this, 'adminInit'));
 			add_action('admin_enqueue_scripts', array(&$this, 'addJSCSS'));
 			//add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
-
-
-			/*//MOVE BELOW THIS LINE INTO AN INIT?
-			//Load options.
-			$this->options = get_option(self::OPTIONS, NULL);
-
-			//Prep table names.
-			global $wpdb;
-			$this->table = array(
-				'posts'	=>	$wpdb->prefix.self::SLUG.'_posts',
-				'meta'	=>	$wpdb->prefix.self::SLUG.'_meta'
-			);*/
 		}
 
 
@@ -87,7 +75,7 @@ if(!class_exists('LIR')) {
 			//If these values are set then return.
 			if(isset($this->options) && isset($this->table)) return;
 			if($wpdb == NULL) global $wpdb;
-			
+
 			//Load options.
 			$this->options = get_option(self::OPTIONS, NULL);
 
@@ -108,7 +96,7 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
-			//Make sure WordPress is compatible. 
+			//Make sure WordPress is compatible.
 			global $wp_version;
 			if(version_compare($wp_version, '3.6', '<'))
 				wp_die('This plugin requires WordPress version 3.6 or higher.');
@@ -207,7 +195,7 @@ if(!class_exists('LIR')) {
 				Creates a menu and submenu on the dashboard for plugin usage and administration.
 
 			See Also:
-				<defaultPage>, <addClassPage>, <fieldsPage>, and <settingsPage>
+				<defaultPage>, <addClassPage>, <reportsPage>, <fieldsPage>, and <settingsPage>
 		*/
 		public function createMenu() {
 			$this->init();
@@ -218,6 +206,8 @@ if(!class_exists('LIR')) {
 									self::SLUG, array(&$this, 'defaultPage'));
 			add_submenu_page(	self::SLUG, 'Add a Class', 'Add a Class', 'edit_posts',
 									self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
+			add_submenu_page(	self::SLUG, 'Reports', 'Reports', 'edit_posts',
+									self::SLUG.'-reports', array(&$this, 'reportsPage'));
 			add_submenu_page(	self::SLUG, 'Fields', 'Fields', 'manage_options',
 									self::SLUG.'-fields', array(&$this, 'fieldsPage'));
 			add_submenu_page(	self::SLUG, 'Settings', 'Settings', 'manage_options',
@@ -260,9 +250,8 @@ if(!class_exists('LIR')) {
 				HTML for the default page.
 		*/
 		public function defaultPage() {
-			if(!current_user_can('edit_posts')) {
+			if(!current_user_can('edit_posts'))
 				wp_die('You do not have sufficient permissions to access this page.');
-			}
 
 			global $wpdb;
 			$this->init($wpdb);
@@ -336,9 +325,8 @@ if(!class_exists('LIR')) {
 				<addUpdateClass>
 		*/
 		public function addClassPage() {
-			if(!current_user_can('edit_posts')) {
+			if(!current_user_can('edit_posts'))
 				wp_die('You do not have sufficient permissions to access this page.');
-			}
 
 			global $user_identity, $wpdb;
 			$this->init($wpdb);
@@ -619,6 +607,25 @@ if(!class_exists('LIR')) {
 
 
 		/*
+			Function: reportsPage
+				Allows users to download Excel or CSV data for reporting purposes.
+
+			Outputs:
+				HTML for the reports page.
+		*/
+		public function reportsPage() {
+			if(!current_user_can('edit_posts'))
+				wp_die('You do not have sufficient permissions to access this page.');
+
+			?>
+			<div class="wrap">
+				<h2>Reports</h2>
+			</div>
+			<?php
+		}
+
+
+		/*
 			Function: fieldsPage
 				Allows manipulation of the adjustable fields.
 
@@ -626,9 +633,9 @@ if(!class_exists('LIR')) {
 				HTML for the fields page.
 		*/
 		public function fieldsPage() {
-			if(!current_user_can('manage_options')) {
+			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
-			}
+
 
 			global $wpdb;
 			$this->init($wpdb);
@@ -889,10 +896,9 @@ if(!class_exists('LIR')) {
 				<sanitizeSettings>
 		*/
 		public function settingsPage() {
-			if(!current_user_can('manage_options')) {
+			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
-			}
-			
+
 			$this->init();
 
 			?>
