@@ -43,5 +43,13 @@ Initial release so why not install?
 
 == Changelog ==
 
+= 0.1.1 =
+9/24/2013, MB
+
+* Disabled test filter.
+* Moved some functionality from the the constructor to a new init function to prevent unnecessary code from executing.
+
 = 0.1.0 =
-* 9/23/2013, MB: Initial non-public release.
+9/23/2013, MB
+
+* Initial non-public release.
