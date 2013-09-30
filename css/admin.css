@@ -6,6 +6,15 @@
 }
 
 /*
+	Add a Class
+*/
+#classDescription {
+	height: 120px;
+	width: 300px;
+}
+
+
+/*
 	Fields
 */
 #deptGroupSB,
