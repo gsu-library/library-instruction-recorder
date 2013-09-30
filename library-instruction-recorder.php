@@ -3,7 +3,7 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 0.1.0
+   Version: 0.2.0
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
@@ -40,7 +40,7 @@ if(!class_exists('LIR')) {
 		const SLUG = 'LIR';
 		const OPTIONS = 'lir_options';
 		const OPTIONS_GROUP = 'lir_options_group';
-		const VERSION = '0.1.0';
+		const VERSION = '0.2.0';
 		private $options;
 		private $table;
 
@@ -236,7 +236,9 @@ if(!class_exists('LIR')) {
 
 			wp_enqueue_script(self::SLUG.'_admin_JS', plugins_url('js/admin.js', __FILE__));
 			wp_enqueue_script('jquery');
-			wp_enqueue_style(self::SLUG.'_admin_CSS', plugins_url('css/admin.css', __FILE__));
+			wp_enqueue_script('jquery-ui-datepicker');
+			wp_enqueue_style(self::SLUG.'-admin', plugins_url('css/admin.css', __FILE__));
+			wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), false, '1.10.3');
 		}
 
 
@@ -420,26 +422,29 @@ if(!class_exists('LIR')) {
 							<?php
 							foreach($user as $u) {
 								if($u->display_name == "admin") continue;
-								echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';
-							}
+								
+								if(($u->display_name == $_POST['librarian2_name']) && !$classAdded)
+									echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
+								else
+									echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';							}
 							?>
 							</select></td>
 						</tr>
 						<tr>
 							<th>*Instructor Name</th>
-							<td><input type="text" name="instructor_name" /></td>
+							<td><input type="text" name="instructor_name" value="<?php if(!$classAdded && !empty($_POST['instructor_name'])) echo $_POST['instructor_name']; ?>" /></td>
 						</tr>
 						<tr>
 							<th>Instructor Email</th>
-							<td><input type="email" name="instructor_email" /></td>
+							<td><input type="email" name="instructor_email" value="<?php if(!$classAdded && !empty($_POST['instructor_email'])) echo $_POST['instructor_email']; ?>" /></td>
 						</tr>
 						<tr>
 							<th>Instructor Phone</th>
-							<td><input type="tel" name="instructor_phone" /></td>
+							<td><input type="tel" name="instructor_phone" value="<?php if(!$classAdded && !empty($_POST['instructor_phone'])) echo $_POST['instructor_phone']; ?>" /></td>
 						</tr>
 						<tr>
 							<th>Class Description</th>
-							<td><textarea name="class_description"></textarea></td>
+							<td><textarea id="classDescription" name="class_description"><?php if(!$classAdded && !empty($_POST['class_description'])) echo $_POST['class_description']; ?></textarea></td>
 						</tr>
 						<tr>
 							<th>*Department/Group</th>
@@ -448,21 +453,25 @@ if(!class_exists('LIR')) {
 								<?php
 								$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
 
-								foreach($departmentGroup as $x)
-									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								foreach($departmentGroup as $x) {
+									if((esc_attr($x) == $_POST['department_group']) && !$classAdded)
+										echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
+									else
+										echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								}
 								?>
 							</select></td>
 						</tr>
 						<tr>
 							<th>Course Number</th>
-							<td><input type="text" name="course_number" /></td>
+							<td><input type="text" name="course_number" value="<?php if(!$classAdded && !empty($_POST['course_number'])) echo $_POST['course_number']; ?>" /></td>
 						</tr>
 						<tr>
-							<th>*Class Date</th>
-							<td><input type="date" name="class_date" value="<?php echo date('Y-m-d'); ?>" /></td>
+							<th>*Class Date (M/D/YYYY) - <span style="color:blue;">This should be fixed now, please let me know if there are issues with it yet.</span></th>
+							<td><input type="text" id="classDate" name="class_date" value="<?php echo date('n/j/Y'); ?>" /></td>
 						</tr>
 						<tr>
-							<th>*Class Time</th>
+							<th>*Class Time (H:MM AM|PM) - <span style="color:red;">This is buggy at the moment.</span></th>
 							<?php
 							date_default_timezone_set('EST5EDT');
 							$minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
@@ -589,7 +598,8 @@ if(!class_exists('LIR')) {
 				'owner_id'				=>	$current_user->id
 			);
 
-			$data['class_start'] = $_POST['class_date'].' '.$_POST['class_time'];
+			//$data['class_start'] = date('Y-m-d', strtotime($_POST['class_date'])).' '.$_POST['class_time'];
+			$data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
 			$data['class_end'] = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
 			$data['bool1'] = isset($_POST['bool1']) ? 1 : 0;
 			$data['bool2'] = isset($_POST['bool2']) ? 1 : 0;
@@ -620,6 +630,9 @@ if(!class_exists('LIR')) {
 			?>
 			<div class="wrap">
 				<h2>Reports</h2>
+				<form action="" method="post">
+					
+				</form>
 			</div>
 			<?php
 		}
