@@ -333,10 +333,11 @@ if(!class_exists('LIR')) {
 			global $user_identity, $wpdb;
 			$this->init($wpdb);
 			get_currentuserinfo();
+			$classAdded = NULL;
 
-			$classAdded = false;
 			//If form has been submitted and has a valid nonce.
 			if(isset($_POST['submitted']) && ($debug['nonce verified'] = wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_add_class'))) {
+				$classAdded = false;
 				$error = array();
 
 				//Check to make sure all required fields have been submitted.
@@ -384,7 +385,7 @@ if(!class_exists('LIR')) {
 				//Message if class was added.
 				if($classAdded) {
 					echo '<div id="message" class="updated">
-						<p><strong>The class has been added!</strong></p>
+						<p><strong>The class has been added!</strong> Need to <a href="#">edit it?</a></p>
 					</div>';
 				}
 				//Message if an error occurred.
@@ -410,7 +411,12 @@ if(!class_exists('LIR')) {
 							foreach($user as $u) {
 								if($u->display_name == "admin") continue;
 								echo '<option value="'.$u->display_name.'"';
-								if($u->display_name == $user_identity) echo ' selected="selected"';
+
+								if(!$classAdded && ($u->display_name == $_POST['librarian_name']))
+									echo ' selected="selected"';
+								else if(($classAdded || !isset($_POST['librarian_name'])) && $u->display_name == $user_identity)
+									echo ' selected="selected"';
+
 								echo '>'.$u->display_name.'</option>';
 							}
 							?>
@@ -422,8 +428,8 @@ if(!class_exists('LIR')) {
 							<?php
 							foreach($user as $u) {
 								if($u->display_name == "admin") continue;
-								
-								if(($u->display_name == $_POST['librarian2_name']) && !$classAdded)
+
+								if(!$classAdded && ($u->display_name == $_POST['librarian2_name']))
 									echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
 								else
 									echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';							}
@@ -468,26 +474,41 @@ if(!class_exists('LIR')) {
 						</tr>
 						<tr>
 							<th>*Class Date (M/D/YYYY) - <span style="color:blue;">This should be fixed now, please let me know if there are issues with it yet.</span></th>
-							<td><input type="text" id="classDate" name="class_date" value="<?php echo date('n/j/Y'); ?>" /></td>
+							<td>
+							<?php
+							echo '<input type="text" id="classDate" name="class_date" value="';
+
+							if(!$classAdded && !empty($_POST['class_date']))
+								echo $_POST['class_date'];
+							else
+								echo date('n/j/Y');
+
+							echo '" />';
+							?>
+							</td>
 						</tr>
 						<tr>
-							<th>*Class Time (H:MM AM|PM) - <span style="color:red;">This is buggy at the moment.</span></th>
+							<th>*Class Time (H:MM AM|PM) - <span style="color:blue;">This should be "fixed".</span></th>
 							<?php
-							date_default_timezone_set('EST5EDT');
-							$minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
-							$time = date('H:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00');
+							if(!$classAdded && !empty($_POST['class_time']))
+								$time = date('g:i A', strtotime($_POST['class_time']));
+							else {
+								date_default_timezone_set('EST5EDT');
+								$minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
+								$time = date('g:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00').date(' A');
+							}
 							?>
-							<td><input type="time" name="class_time" value="<?php echo $time; ?>" /> <label>*Length</label>
+							<td><input type="text" name="class_time" value="<?php echo $time; ?>" /> <label>*Length</label>
 								<select name="class_length">
 									<option value="0">&nbsp;</option>
-									<option value="15">15 minutes</option>
-									<option value="30">30 minutes</option>
-									<option value="45">45 minutes</option>
-									<option value="60">1 hour</option>
-									<option value="75">1 hour 15 minutes</option>
-									<option value="90">1 hour 30 minutes</option>
-									<option value="105">1 hour 45 minutes</option>
-									<option value="120">2 hours</option>
+									<option value="15" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '15')) echo 'selected="selected"'; ?>>15 minutes</option>
+									<option value="30" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '30')) echo 'selected="selected"'; ?>>30 minutes</option>
+									<option value="45" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '45')) echo 'selected="selected"'; ?>>45 minutes</option>
+									<option value="60" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '60')) echo 'selected="selected"'; ?>>1 hour</option>
+									<option value="75" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '75')) echo 'selected="selected"'; ?>>1 hour 15 minutes</option>
+									<option value="90" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '90')) echo 'selected="selected"'; ?>>1 hour 30 minutes</option>
+									<option value="105" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '105')) echo 'selected="selected"'; ?>>1 hour 45 minutes</option>
+									<option value="120" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '120')) echo 'selected="selected"'; ?>>2 hours</option>
 								</select>
 							</td>
 						</tr>
@@ -498,8 +519,14 @@ if(!class_exists('LIR')) {
 								<?php
 								$classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
 
-								foreach($classLocation as $x)
-									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								foreach($classLocation as $x) {
+									echo '<option value="'.esc_attr($x).'"';
+
+									if(!$classAdded && $_POST['class_location'] == esc_attr($x))
+										echo ' selected="selected"';
+
+									echo '>'.$x.'</option>';
+								}
 								?>
 							</select></td>
 						</tr>
@@ -510,8 +537,14 @@ if(!class_exists('LIR')) {
 								<?php
 								$classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
 
-								foreach($classType as $x)
-									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								foreach($classType as $x) {
+									echo '<option value="'.esc_attr($x).'"';
+
+									if(!$classAdded && $_POST['class_type'] == esc_attr($x))
+										echo ' selected="selected"';
+
+									echo '>'.$x.'</option>';
+								}
 								?>
 							</select></td>
 						</tr>
@@ -522,8 +555,14 @@ if(!class_exists('LIR')) {
 								<?php
 								$audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
 
-								foreach($audience as $x)
-									echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+								foreach($audience as $x) {
+									echo '<option value="'.esc_attr($x).'"';
+
+									if(!$classAdded && $_POST['audience'] == esc_attr($x))
+										echo ' selected="selected"';
+
+									echo '>'.$x.'</option>';
+								}
 								?>
 							</select></td>
 						</tr>
@@ -534,28 +573,28 @@ if(!class_exists('LIR')) {
 						?>
 						<tr>
 							<th><?php echo $bools['bool1Value']; ?></th>
-							<td><input type="checkbox" name="bool1" />
+							<td><input type="checkbox" name="bool1" <?php if(!$classAdded && $_POST['bool1'] == 'on') echo 'checked="checked"'; ?> />
 						</tr>
 						<?php
 						} if($bools['bool2Enabled']) {
 						?>
 						<tr>
 							<th><?php echo $bools['bool2Value']; ?></th>
-							<td><input type="checkbox" name="bool2" />
+							<td><input type="checkbox" name="bool2" <?php if(!$classAdded && $_POST['bool2'] == 'on') echo 'checked="checked"'; ?> />
 						</tr>
 						<?php
 						} if($bools['bool3Enabled']) {
 						?>
 						<tr>
 							<th><?php echo $bools['bool3Value']; ?></th>
-							<td><input type="checkbox" name="bool3" />
+							<td><input type="checkbox" name="bool3" <?php if(!$classAdded && $_POST['bool3'] == 'on') echo 'checked="checked"'; ?> />
 						</tr>
 						<?php
 						}
 						?>
 						<tr>
 							<th>Number of Students Attended</th>
-							<td><input type="number" name="attendance" /></td>
+							<td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
 						</tr>
 					</table>
 
@@ -631,7 +670,7 @@ if(!class_exists('LIR')) {
 			<div class="wrap">
 				<h2>Reports</h2>
 				<form action="" method="post">
-					
+
 				</form>
 			</div>
 			<?php
