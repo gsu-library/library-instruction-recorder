@@ -257,8 +257,21 @@ if(!class_exists('LIR')) {
 
 			global $wpdb;
 			$this->init($wpdb);
+			$orderBy = $_GET['orderby'];
 
-			$query = "SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY class_start, class_end, librarian_name";
+			if($orderBy == 'department')				$orderQ = 'department_group, course_number, class_start, class_end';
+			else if($orderBy == 'departmentDesc')	$orderQ = 'department_group DESC, course_number, class_start, class_end';
+			else if($orderBy == 'course')				$orderQ = 'course_number, class_start, class_end';
+			else if($orderBy == 'courseDesc')		$orderQ = 'course_number DESC, class_start, class_end';
+			else if($orderBy == 'date')				$orderQ = 'class_start, class_end';
+			else if($orderBy == 'dateDesc')			$orderQ = 'class_start DESC, class_end';
+			else if($orderBy == 'librarian')			$orderQ = 'librarian_name, class_start, class_end';
+			else if($orderBy == 'librarianDesc')	$orderQ = 'librarian_name DESC, class_start, class_end';
+			else if($orderBy == 'instructor')		$orderQ = 'instructor_name, class_start, class_end';
+			else if($orderBy == 'instructorDesc')	$orderQ = 'instructor_name DESC, class_start, class_end';
+			else												$orderQ = 'class_start, class_end';
+
+			$query = "SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ;
 			$result = $wpdb->get_results($query);
 
 			?>
@@ -266,10 +279,50 @@ if(!class_exists('LIR')) {
 				<h2><?php echo $this->options['name']; ?> <a href="<?php echo 'admin.php?page='.self::SLUG.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
 				<h3>Upcoming Classes</h3>
 				<table class="widefat fixed">
-					<thead><tr><th class="check-column">&nbsp;</th><th class="sortable"><a href="#">Department/Group</a></th><th>Course #</th>
-						<th class="date-column">Date/Time</th><th>Primary Librarian</th><th>Instructor</th><th>Details</th></tr></thead>
-					<tfoot><tr><th class="check-column">&nbsp;</th><th class="sortable"><a href="#">Department/Group</a></th><th>Course #</th>
-						<th class="date-column">Date/Time</th><th>Primary Librarian</th><th>Instructor</th><th>Details</th></tr></tfoot>
+					<?php
+					$baseUrl = admin_url('admin.php?page='.self::SLUG);
+					$tableHF = '<th class="check-column">&nbsp;</th>';
+
+					//Department/Group THead & TFoot
+					if($orderBy == 'department')
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=departmentDesc"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+					else if($orderBy == 'departmentDesc')
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=department"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+					else
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=department"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+					//Course # THead & TFoot
+					if($orderBy == 'course')
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=courseDesc"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+					else if($orderBy == 'courseDesc')
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=course"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+					else
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=course"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+					//Date/Time THead & TFoot
+					if(!isset($orderBy) || $orderBy == 'date')
+						$tableHF .= '<th class="date-column sorted asc"><a href="'.$baseUrl.'&orderby=dateDesc"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+					else if($orderBy == 'dateDesc')
+						$tableHF .= '<th class="date-column sorted desc"><a href="'.$baseUrl.'&orderby=date"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+					else
+						$tableHF .= '<th class="date-column sortable desc"><a href="'.$baseUrl.'&orderby=date"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+					//Primary Librarian THead & TFoot
+					if($orderBy == 'librarian')
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=librarianDesc"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+					else if($orderBy == 'librarianDesc')
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=librarian"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+					else
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=librarian"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+					//Instructor THead & TFoot
+					if($orderBy == 'instructor')
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=instructorDesc"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+					else if($orderBy == 'instructorDesc')
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=instructor"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+					else
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=instructor"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+
+					$tableHF .= '<th>Details</th>';
+					?>
+					<thead><tr><?php echo $tableHF; ?></tr></thead>
+					<tfoot><tr><?php echo $tableHF; ?></tr></tfoot>
 					<tbody>
 
 					<?php
