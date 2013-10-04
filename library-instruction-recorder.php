@@ -168,7 +168,7 @@ if(!class_exists('LIR')) {
 			//delete_option(self::OPTIONS);
 
 			//Remove custom database tables (post & meta).
-			global $wpdb;
+			//global $wpdb;
 			//$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
 		}
 
@@ -200,11 +200,14 @@ if(!class_exists('LIR')) {
 		public function createMenu() {
 			$this->init();
 
+			//SHOULD THIS STAY OR IS IT CONFUSING?
+			$addClassName = ($_GET['edit']) ? 'Add/Edit a Class' : 'Add a Class';
+
 			add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
 			//Added so the first submenu item does not have the same title as the main menu item.
 			add_submenu_page(	self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts',
 									self::SLUG, array(&$this, 'defaultPage'));
-			add_submenu_page(	self::SLUG, 'Add a Class', 'Add a Class', 'edit_posts',
+			add_submenu_page(	self::SLUG, $addClassName, $addClassName, 'edit_posts',
 									self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
 			add_submenu_page(	self::SLUG, 'Reports', 'Reports', 'edit_posts',
 									self::SLUG.'-reports', array(&$this, 'reportsPage'));
@@ -255,9 +258,32 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('edit_posts'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
-			global $wpdb;
+			global $wpdb, $current_user;
 			$this->init($wpdb);
+			get_currentuserinfo();
+			$baseUrl = admin_url('admin.php?page='.self::SLUG);
+			$delete = (!empty($_GET['delete'])) ? $_GET['delete'] : NULL;
+
+			/*
+				Handle deletion if present.
+			*/
+			if($delete) {
+				$query = $wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $delete);
+				$class = $wpdb->get_row($query);
+
+				//Check if the user has permissions to remove the class and verify the nonce.
+				if((current_user_can('manage_options') || $current_user->id == $class->owner_id) && wp_verify_nonce($_GET['n'], self::SLUG.'-delete-'.$delete)) {
+					$classRemoved = $wpdb->delete($this->table['posts'], array('id' => $delete), '%d');
+				}
+			}
+
+			/*
+				Sorting statements.
+			*/
 			$orderBy = $_GET['orderby'];
+
+			//Set default order by if non-default view with no order already selected.
+			if(!$orderBy && ($_GET['incomplete'] || $_GET['previous']))	$orderBy = 'dateDesc';
 
 			if($orderBy == 'department')				$orderQ = 'department_group, course_number, class_start, class_end';
 			else if($orderBy == 'departmentDesc')	$orderQ = 'department_group DESC, course_number, class_start, class_end';
@@ -271,61 +297,120 @@ if(!class_exists('LIR')) {
 			else if($orderBy == 'instructorDesc')	$orderQ = 'instructor_name DESC, class_start, class_end';
 			else												$orderQ = 'class_start, class_end';
 
-			$query = "SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ;
-			$result = $wpdb->get_results($query);
+			/*
+				Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
+			*/
+			//CHANGE TO UPCOMING
+			$upcoming = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
+			$upcomingCount = $wpdb->num_rows;
+			//THIS WILL NEED TO WORK AT SOME POINT
+			$incomplete = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance = -1 ORDER BY ".$orderQ);
+			$incompleteCount = $wpdb->num_rows;
+			//AS WILL THIS
+			$previous = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
+			$previousCount = $wpdb->num_rows;
+
+			//Pick list to display and setup for link persistence.
+			$mode = '';
+			if($_GET['incomplete']) {
+				$result = $incomplete;
+				$mode .= '&incomplete=1';
+			}
+			else if($_GET['previous']) {
+				$result = $previous;
+				$mode .= '&previous=1';
+			}
+			else
+				$result = $upcoming;
 
 			?>
 			<div class="wrap">
 				<h2><?php echo $this->options['name']; ?> <a href="<?php echo 'admin.php?page='.self::SLUG.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
-				<h3>Upcoming Classes</h3>
+
+				<?php
+				/*
+					Success or error message for removing a class.
+				*/
+				if($delete && $classRemoved) {
+					echo '<div id="message" class="updated">
+						<p><strong>The class has been removed!</strong></p>
+					</div>';
+				}
+				else if($delete && !$classRemoved) {
+					echo '<div id="message" class="error">
+						<p><strong>There was a problem removing the class.</strong></p>
+					</div>';
+				}
+				?>
+
+				<h3>Classes</h3>
+
+				<ul class="subsubsub">
+					<?php
+					//Upcoming classes.
+					echo '<li><a href="'.$baseUrl.'"';
+					if(!isset($_GET['incomplete']) && !isset($_GET['previous'])) echo ' class="current"';
+					echo '>Upcoming <span class="count">('.$upcomingCount.')</span></a> |</li>';
+					//Incomplete classes.
+					echo '<li><a href="'.$baseUrl.'&incomplete=1"';
+					if($_GET['incomplete'] == '1') echo ' class="current"';
+					echo '>Incomplete <span class="count">('.$incompleteCount.')</span></a> |</li>';
+					//Previous classes.
+					echo '<li><a href="'.$baseUrl.'&previous=1"';
+					if($_GET['previous'] == '1') echo ' class="current"';
+					echo '>Previous <span class="count">('.$previousCount.')</span></a></li>';
+					?>
+				</ul>
+
 				<table class="widefat fixed">
 					<?php
-					$baseUrl = admin_url('admin.php?page='.self::SLUG);
 					$tableHF = '<th class="check-column">&nbsp;</th>';
 
+					/*
+						The following section is used to created the table headers and footers with sorting functionality.
+					*/
 					//Department/Group THead & TFoot
 					if($orderBy == 'department')
-						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=departmentDesc"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=departmentDesc'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
 					else if($orderBy == 'departmentDesc')
-						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=department"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
 					else
-						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=department"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
 					//Course # THead & TFoot
 					if($orderBy == 'course')
-						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=courseDesc"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=courseDesc'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
 					else if($orderBy == 'courseDesc')
-						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=course"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
 					else
-						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=course"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
 					//Date/Time THead & TFoot
 					if(!isset($orderBy) || $orderBy == 'date')
-						$tableHF .= '<th class="date-column sorted asc"><a href="'.$baseUrl.'&orderby=dateDesc"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="date-column sorted asc"><a href="'.$baseUrl.'&orderby=dateDesc'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
 					else if($orderBy == 'dateDesc')
-						$tableHF .= '<th class="date-column sorted desc"><a href="'.$baseUrl.'&orderby=date"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="date-column sorted desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
 					else
-						$tableHF .= '<th class="date-column sortable desc"><a href="'.$baseUrl.'&orderby=date"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="date-column sortable desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
 					//Primary Librarian THead & TFoot
 					if($orderBy == 'librarian')
-						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=librarianDesc"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=librarianDesc'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
 					else if($orderBy == 'librarianDesc')
-						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=librarian"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
 					else
-						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=librarian"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
 					//Instructor THead & TFoot
 					if($orderBy == 'instructor')
-						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=instructorDesc"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=instructorDesc'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
 					else if($orderBy == 'instructorDesc')
-						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=instructor"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=instructor'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
 					else
-						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=instructor"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+						$tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=instructor'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
 
-					$tableHF .= '<th>Details</th>';
-					?>
-					<thead><tr><?php echo $tableHF; ?></tr></thead>
-					<tfoot><tr><?php echo $tableHF; ?></tr></tfoot>
-					<tbody>
+					$tableHF .= '<th>Options</th>';
 
-					<?php
+					echo '<thead><tr>'.$tableHF.'</tr></thead>';
+					echo '<tfoot><tr>'.$tableHF.'</tr></tfoot>';
+					echo '<tbody>';
+
 					//Post a table row for each class in $result.
 					foreach($result as $class) {
 						if($class->class_description)
@@ -356,8 +441,18 @@ if(!class_exists('LIR')) {
 							echo '<td>'.$class->instructor_name.'</td>';
 						}
 
-						echo '<td><a href="#">Details</a></td>';
-						echo '</tr>';
+						echo '<td><a style="text-decoration:line-through;" href="'.$baseUrl.'&details='.$class->id.'">Details</a>';
+
+						//Edit and delete links for classes.
+						if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
+							$extras = '';
+							if($orderBy) 	$extras .= '&orderby='.$orderBy;
+							if($mode)		$extras .= $mode;
+
+							echo '&nbsp;&nbsp;<a style="text-decoration:line-through;" href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="removeLink" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
+						}
+
+						echo '</td></tr>';
 					}//End foreach loop.
 					?>
 
@@ -412,7 +507,7 @@ if(!class_exists('LIR')) {
 
 			?>
 			<div class="wrap">
-				<h2>Add a Class</h2>
+				<h2><?php echo ($_GET['edit']) ? 'Edit' : 'Add'; ?> a Class</h2>
 
 				<?php
 				//Added for debugging (if set).
@@ -652,9 +747,10 @@ if(!class_exists('LIR')) {
 					</table>
 
 					<?php wp_nonce_field(self::SLUG.'_add_class', self::SLUG.'_nonce'); ?>
+					<?php if($_GET['edit']) echo '<input type="hidden" name="edit" value="'.$_GET['edit'].'" />'; ?>
 
 					<p class="submit">
-						<input type="submit" name="submitted" class="button-primary" value="Add Class" />
+						<input type="submit" name="submitted" class="button-primary" value="<?php echo ($_GET['edit']) ? 'Edit' : 'Add'; ?> Class" />
 					</p>
 				</form>
 			</div>
