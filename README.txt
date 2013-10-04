@@ -4,7 +4,7 @@ Donate link: http://library.gsu.edu/giving/
 Tags: library, library instruction recorder, instruction scheduling
 Requires at least: 3.6
 Tested up to: 3.6
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -18,6 +18,10 @@ Could use a better description here with perhaps:
 
 * Feature a goes here.
 * Feature b goes here.
+
+== Requirements ==
+
+* JavaScript must be enabled in order for some of the functionality to work. This __should__ be temporary.
 
 == Installation ==
 
@@ -42,6 +46,20 @@ It is required and there are no FAQs yet.
 Initial release so why not install?
 
 == Changelog ==
+
+= 0.2.0 =
+Week of 9/30/2013, MB
+
+* Fields are now saved on add a class page after a bad submission.
+* Fields can now be sorted on the upcoming classes page.
+* Delete links on upcoming classes page now functional.
+* Different class listings possible (upcoming, incomplete, previous).
+
+9/25/2013, MB
+
+* Added reports page (non-functional).
+* Added jquery-ui-datepicker.js (from local WordPress repository) for date field on add a class page.
+* Added jQuery UI Redmond styling to the plugin.
 
 = 0.1.1 =
 9/24/2013, MB
