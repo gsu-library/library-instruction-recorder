@@ -35,7 +35,7 @@ if(!class_exists('LIR')) {
 			in WordPress.
 	*/
 	class LIR {
-		//Do not change these variables. The plugin name and slug can be changed in the LIR settings.
+		//Do not change these variables. The plugin name and slug can be changed on the settings page.
 		const NAME = 'Library Instruction Recorder';
 		const SLUG = 'LIR';
 		const OPTIONS = 'lir_options';
@@ -449,7 +449,7 @@ if(!class_exists('LIR')) {
 							if($orderBy) 	$extras .= '&orderby='.$orderBy;
 							if($mode)		$extras .= $mode;
 
-							echo '&nbsp;&nbsp;<a style="text-decoration:line-through;" href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="removeLink" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
+							echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="removeLink" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
 						}
 
 						echo '</td></tr>';
@@ -478,15 +478,37 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('edit_posts'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
-			global $user_identity, $wpdb;
+			global $user_identity, $wpdb, $current_user;
 			$this->init($wpdb);
 			get_currentuserinfo();
+			$baseUrl = admin_url('admin.php?page='.self::SLUG.'-add-a-class');
 			$classAdded = NULL;
+			$error = array();
 
-			//If form has been submitted and has a valid nonce.
+			/*
+				Edit a class setup and permission checking.
+			*/
+			if($_GET['edit'] && !$_POST['edit']) {
+				$class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $_GET['edit']));
+
+				foreach($class as $x => $y) {
+					$_POST[$x] = $y;
+				}
+			}
+
+			/*
+				Permission checking.
+			*/
+			if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
+				array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
+				$_POST['submitted'] = NULL; //Ensures the class is never processed for submission.
+			}
+
+			/*
+				Submission handling.
+			*/
 			if(isset($_POST['submitted']) && ($debug['nonce verified'] = wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_add_class'))) {
 				$classAdded = false;
-				$error = array();
 
 				//Check to make sure all required fields have been submitted.
 				if(empty($_POST['librarian_name']))		array_push($error, 'Missing Field: Primary Librarian');
@@ -500,9 +522,10 @@ if(!class_exists('LIR')) {
 				if(empty($_POST['audience']))				array_push($error, 'Missing Field: Audience');
 
 				//Go to function to insert data into database.
-				if(empty($error)) $classAdded = $this->addUpdateClass();
+				if(empty($error)) $classAdded = $this->addUpdateClass($_POST['edit']);
 				//If database insert failed, push error.
-				if(!$classAdded && empty($error)) array_push($error, 'An error has occurred while trying to submit the class. Please try again.');
+				if(!$classAdded && empty($error) && $_POST['edit']) array_push($error, 'An error has occurred while trying to update the class. Please try again.');
+				else if(!$classAdded && empty($error)) array_push($error, 'An error has occurred while trying to submit the class. Please try again.');
 			}
 
 			?>
@@ -527,13 +550,21 @@ if(!class_exists('LIR')) {
 							echo '<p>'.$x.': '.$y.'</p>';
 					}
 
+					echo '<p>Last Query: '.$wpdb->last_query.'</p>';
+
 					echo '</div>';
 				}
 
 				//Message if class was added.
-				if($classAdded) {
+				if($classAdded && !$_POST['edit']) {
 					echo '<div id="message" class="updated">
-						<p><strong>The class has been added!</strong> Need to <a href="#">edit it?</a></p>
+						<p><strong>The class has been added!</strong> Need to <a href="'.$baseUrl.'&edit='.$classAdded.'">edit it?</a> Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
+					</div>';
+				}
+				//Message if class was updated.
+				else if($classAdded && $_POST['edit']) {
+					echo '<div id="message" class="updated">
+						<p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
 					</div>';
 				}
 				//Message if an error occurred.
@@ -628,6 +659,9 @@ if(!class_exists('LIR')) {
 
 							if(!$classAdded && !empty($_POST['class_date']))
 								echo $_POST['class_date'];
+							else if(!$classAdded && !empty($_POST['class_start'])) {
+								echo date('n/j/Y', strtotime($_POST['class_start']));
+							}
 							else
 								echo date('n/j/Y');
 
@@ -640,6 +674,10 @@ if(!class_exists('LIR')) {
 							<?php
 							if(!$classAdded && !empty($_POST['class_time']))
 								$time = date('g:i A', strtotime($_POST['class_time']));
+							else if(!$classAdded && !empty($_POST['class_start'])) {
+								$time = date('g:i A', strtotime($_POST['class_start']));
+								$_POST['class_length'] = (strtotime($_POST['class_end']) - strtotime($_POST['class_start'])) / 60;
+							}
 							else {
 								date_default_timezone_set('EST5EDT');
 								$minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
@@ -721,28 +759,28 @@ if(!class_exists('LIR')) {
 						?>
 						<tr>
 							<th><?php echo $bools['bool1Value']; ?></th>
-							<td><input type="checkbox" name="bool1" <?php if(!$classAdded && $_POST['bool1'] == 'on') echo 'checked="checked"'; ?> />
+							<td><input type="checkbox" name="bool1" <?php if(!$classAdded && ($_POST['bool1'] == 'on' || $_POST['bool1'] == 1)) echo 'checked="checked"'; ?> />
 						</tr>
 						<?php
 						} if($bools['bool2Enabled']) {
 						?>
 						<tr>
 							<th><?php echo $bools['bool2Value']; ?></th>
-							<td><input type="checkbox" name="bool2" <?php if(!$classAdded && $_POST['bool2'] == 'on') echo 'checked="checked"'; ?> />
+							<td><input type="checkbox" name="bool2" <?php if(!$classAdded && ($_POST['bool2'] == 'on' || $_POST['bool2'] == 1)) echo 'checked="checked"'; ?> />
 						</tr>
 						<?php
 						} if($bools['bool3Enabled']) {
 						?>
 						<tr>
 							<th><?php echo $bools['bool3Value']; ?></th>
-							<td><input type="checkbox" name="bool3" <?php if(!$classAdded && $_POST['bool3'] == 'on') echo 'checked="checked"'; ?> />
+							<td><input type="checkbox" name="bool3" <?php if(!$classAdded && ($_POST['bool3'] == 'on' || $_POST['bool3'] == 1)) echo 'checked="checked"'; ?> />
 						</tr>
 						<?php
 						}
 						?>
 						<tr>
 							<th>Number of Students Attended</th>
-							<td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
+							<td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance']) && $_POST['attendance'] != -1) echo $_POST['attendance']; ?>" /></td>
 						</tr>
 					</table>
 
@@ -783,8 +821,10 @@ if(!class_exists('LIR')) {
 				'audience'				=>	$_POST['audience'],
 				'department_group'	=>	$_POST['department_group'],
 				'last_updated_by'		=>	$current_user->user_email,
-				'owner_id'				=>	$current_user->id
 			);
+
+			//Only mess with owner_id if new submission.
+			if(!$id) $data['owner_id'] = $current_user->id;
 
 			//$data['class_start'] = date('Y-m-d', strtotime($_POST['class_date'])).' '.$_POST['class_time'];
 			$data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
@@ -800,7 +840,12 @@ if(!class_exists('LIR')) {
 			if(!empty($_POST['course_number']))			$data['course_number'] = $_POST['course_number'];
 			if(!empty($_POST['attendance']))				$data['attendance'] = $_POST['attendance'];
 
-			return $wpdb->insert($this->table['posts'], $data);
+			if($id)	$success = $wpdb->update($this->table['posts'], $data, array('id' => $id));
+			else		$success = $wpdb->insert($this->table['posts'], $data);
+
+			if($success && !$id)	return $wpdb->insert_id; //Returns auto increment number on successful insertion.
+			else if($success)		return $success; //Returns number of rows updated on successful update.
+			else 						return false; //Returns false if either update or insert failed.
 		}
 
 
