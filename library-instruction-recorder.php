@@ -9,7 +9,6 @@
    License: GPLv3
 
 
-
 	Library Instruction Recorder - A WordPress Plugin
 	Copyright (C) 2013 Georgia State University Library
 
@@ -59,6 +58,8 @@ if(!class_exists('LIR')) {
 			add_action('admin_menu', array(&$this, 'createMenu'));
 			add_action('admin_init', array(&$this, 'adminInit'));
 			add_action('admin_enqueue_scripts', array(&$this, 'addJSCSS'));
+			//PROBABLY DON'T NEED THIS ANY LONGER
+			add_action('wp_ajax_showDetails', array(&$this, 'showDetails'));
 			//add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 		}
 
@@ -237,9 +238,9 @@ if(!class_exists('LIR')) {
 
 			if($parent_file != self::SLUG) return;
 
-			wp_enqueue_script(self::SLUG.'_admin_JS', plugins_url('js/admin.js', __FILE__));
-			wp_enqueue_script('jquery');
-			wp_enqueue_script('jquery-ui-datepicker');
+			wp_enqueue_script(self::SLUG.'-admin-JS', plugins_url('js/admin.js', __FILE__), array('jquery', 'jquery-ui-datepicker', 'jquery-ui-dialog'));
+			//PROBABLY DON'T NEED THIS ANY LONGER
+			wp_localize_script(self::SLUG.'-admin-JS', 'local_info', array('ajax_url' => admin_url('admin-ajax.php')));
 			wp_enqueue_style(self::SLUG.'-admin', plugins_url('css/admin.css', __FILE__));
 			wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), false, '1.10.3');
 		}
@@ -309,6 +310,9 @@ if(!class_exists('LIR')) {
 			//AS WILL THIS
 			$previous = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
 			$previousCount = $wpdb->num_rows;
+			//WHA?
+			$myclasses = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
+			$myclassesCount = $wpdb->num_rows;
 
 			//Pick list to display and setup for link persistence.
 			$mode = '';
@@ -320,12 +324,19 @@ if(!class_exists('LIR')) {
 				$result = $previous;
 				$mode .= '&previous=1';
 			}
+			else if($_GET['myclasses']) {
+				$result = $myclasses;
+				$mode .= '&myclasses=1';
+			}
 			else
 				$result = $upcoming;
 
+			//Query to get bool names.
+			$boolInfo = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']. " WHERE field = 'bool_info'"));
+
 			?>
 			<div class="wrap">
-				<h2><?php echo $this->options['name']; ?> <a href="<?php echo 'admin.php?page='.self::SLUG.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
+				<h2><?php echo $this->options['name']; ?> <a href="<?php echo $baseUrl.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
 
 				<?php
 				/*
@@ -343,13 +354,11 @@ if(!class_exists('LIR')) {
 				}
 				?>
 
-				<h3>Classes</h3>
-
 				<ul class="subsubsub">
 					<?php
 					//Upcoming classes.
 					echo '<li><a href="'.$baseUrl.'"';
-					if(!isset($_GET['incomplete']) && !isset($_GET['previous'])) echo ' class="current"';
+					if(!$_GET['incomplete'] && !$_GET['previous'] && !$_GET['myclasses']) echo ' class="current"';
 					echo '>Upcoming <span class="count">('.$upcomingCount.')</span></a> |</li>';
 					//Incomplete classes.
 					echo '<li><a href="'.$baseUrl.'&incomplete=1"';
@@ -358,9 +367,18 @@ if(!class_exists('LIR')) {
 					//Previous classes.
 					echo '<li><a href="'.$baseUrl.'&previous=1"';
 					if($_GET['previous'] == '1') echo ' class="current"';
-					echo '>Previous <span class="count">('.$previousCount.')</span></a></li>';
+					echo '>Previous <span class="count">('.$previousCount.')</span></a> |</li>';
+					//My classes.
+					echo '<li><a href="'.$baseUrl.'&myclasses=1"';
+					if($_GET['myclasses'] == '1') echo ' class="current"';
+					echo '>My Classes <span class="count">('.$myclassesCount.')</span></a></li>';
 					?>
 				</ul>
+
+				<p class="search-box">
+					<input type="search" name="s" value="in development" />
+					<input type="submit" class="button" value="?" />
+				</p>
 
 				<table class="widefat fixed">
 					<?php
@@ -414,34 +432,104 @@ if(!class_exists('LIR')) {
 					//Post a table row for each class in $result.
 					foreach($result as $class) {
 						if($class->class_description)
-							echo '<tr title="'.$class->class_description.'">';
+							echo '<tr class="'.self::SLUG.'-'.$class->id.'" title="'.$class->class_description.'">';
 						else
-							echo '<tr>';
+							echo '<tr class="'.self::SLUG.'-'.$class->id.'">';
 
-						echo '<th>&nbsp;</th><td>'.$class->department_group.'</td><td>'.$class->course_number.'</td>';
+						echo '<th>&nbsp;</th>
+								<td name="Department-Group">'.$class->department_group.'</td>';
+
+						//Assign name=skip if not present for details.
+						if($class->course_number)
+							echo '<td name="Course_Number">'.$class->course_number.'</td>';
+						else
+							echo '<td name="skip">&nbsp;</td>';
+
+						//Class location, class type, audience for details.
+						echo '<td name="Class_Location" class="LIR-hide">'.$class->class_location.'</td>
+								<td name="Class_Type" class="LIR-hide">'.$class->class_type.'</td>
+								<td name="Audience" class="LIR-hide">'.$class->audience.'</td>';
 
 						//Display start date & time - end date & time.
 						if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
-							echo '<td>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
+							echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
 							echo date('g:i A', strtotime($class->class_end)).'</td>';
 						}
 						else { //If the end time is not on the same day as the start time.
-							echo '<td>'.date('n/j/Y (D) g:i A -', strtotime($class->class_start)).'<br />';
+							echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A -', strtotime($class->class_start)).'<br />';
 							echo date('n/j/Y (D) g:i A', strtotime($class->class_end)).'</td>';
 						}
 
-						echo '<td>'.$class->librarian_name.'</td>';
+						echo '<td name="Primary_Librarian">'.$class->librarian_name.'</td>';
+
+						//Secondary librarian if present (for details).
+						if($class->librarian2_name)
+							echo '<td name="Secondary_Librarian" class="LIR-hide">'.$class->librarian2_name.'</td>';
 
 						//Instructor name and email.
 						if($class->instructor_name && $class->instructor_email) {
 							$mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
-							echo '<td><a href="'.$mailto.'">'.$class->instructor_name.'</a></td>';
+							echo '<td name="Instructor"><a href="'.$mailto.'">'.$class->instructor_name.'</a></td>';
 						}
 						else {
-							echo '<td>'.$class->instructor_name.'</td>';
+							echo '<td name="Instructor">'.$class->instructor_name.'</td>';
 						}
 
-						echo '<td><a style="text-decoration:line-through;" href="'.$baseUrl.'&details='.$class->id.'">Details</a>';
+						//Instructor email for details.
+						if($class->instructor_email)
+							echo '<td name="Instructor_Email" class="LIR-hide">'.$class->instructor_email.'</td>';
+
+						//Instructor phone for details.
+						if($class->instructor_phone)
+							echo '<td name="Instructor_Phone" class="LIR-hide">'.$class->instructor_phone.'</td>';
+
+						//Bools for details.
+						if($boolInfo['bool1Enabled']) {
+							echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool1Value'])).'" class="LIR-hide">';
+
+							if($class->bool1)
+								echo 'yes';
+							else
+								echo 'no';
+
+							echo '</td>';
+						}
+						if($boolInfo['bool2Enabled']) {
+							echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool2Value'])).'" class="LIR-hide">';
+
+							if($class->bool2)
+								echo 'yes';
+							else
+								echo 'no';
+
+							echo '</td>';
+						}
+						if($boolInfo['bool3Enabled']) {
+							echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool3Value'])).'" class="LIR-hide">';
+
+							if($class->bool3)
+								echo 'yes';
+							else
+								echo 'no';
+
+							echo '</td>';
+						}
+
+						//Attendance for details.
+						if($class->attendance != -1)
+							echo '<td name="Attendance" class="LIR-hide">'.$class->attendance.'</td>';
+						else
+							echo '<td name="Attendance" class="LIR-hide">no attendance recorded</td>';
+
+						//Description for details.
+						if($class->class_description)
+							echo '<td name="Class_Description" class="LIR-hide">'.$class->class_description.'</td>';
+
+						//Last updated for details.
+						echo '<td name="Last_Updated" class="LIR-hide">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</td>';
+
+						//Start Options section.
+						echo '<td name="skip"><a class="detailsLink" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Details</a>';
 
 						//Edit and delete links for classes.
 						if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
@@ -460,6 +548,20 @@ if(!class_exists('LIR')) {
 				</table>
 			</div>
 			<?php
+		}
+
+
+		/*
+			Function: showDetails
+				This fires off after an AJAX request from the upcoming classes page.
+				PROBABLY DON'T NEED THIS FUNCTION ANY LONGER
+		*/
+		public function showDetails() {
+			global $wpdb;
+			$this->init($wpdb);
+
+			$result = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $_POST['id']));
+			echo json_encode($result);
 		}
 
 
@@ -562,7 +664,7 @@ if(!class_exists('LIR')) {
 					</div>';
 				}
 				//Message if class was updated.
-				else if($classAdded && $_POST['edit']) {
+				else if($classAdded !== false && $_POST['edit']) {
 					echo '<div id="message" class="updated">
 						<p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
 					</div>';
@@ -652,7 +754,7 @@ if(!class_exists('LIR')) {
 							<td><input type="text" name="course_number" value="<?php if(!$classAdded && !empty($_POST['course_number'])) echo $_POST['course_number']; ?>" /></td>
 						</tr>
 						<tr>
-							<th>*Class Date (M/D/YYYY) - <span style="color:blue;">This should be fixed now, please let me know if there are issues with it yet.</span></th>
+							<th>*Class Date (M/D/YYYY)</th>
 							<td>
 							<?php
 							echo '<input type="text" id="classDate" name="class_date" value="';
@@ -670,7 +772,7 @@ if(!class_exists('LIR')) {
 							</td>
 						</tr>
 						<tr>
-							<th>*Class Time (H:MM AM|PM) - <span style="color:blue;">This should be "fixed".</span></th>
+							<th>*Class Time (H:MM AM|PM)</th>
 							<?php
 							if(!$classAdded && !empty($_POST['class_time']))
 								$time = date('g:i A', strtotime($_POST['class_time']));
@@ -788,7 +890,8 @@ if(!class_exists('LIR')) {
 					<?php if($_GET['edit']) echo '<input type="hidden" name="edit" value="'.$_GET['edit'].'" />'; ?>
 
 					<p class="submit">
-						<input type="submit" name="submitted" class="button-primary" value="<?php echo ($_GET['edit']) ? 'Edit' : 'Add'; ?> Class" />
+						<input type="submit" name="submitted" class="button-primary" value="Submit" />&nbsp;&nbsp;
+						<input type="button" class="button-primary" value="Cancel" onclick="location.href = '<?php echo admin_url('admin.php?page='.self::SLUG); ?>'" />
 					</p>
 				</form>
 			</div>
@@ -860,11 +963,29 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('edit_posts'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
+			global $wpdb;
+			$this->init($wpdb);
+
+			if($_POST['submitted']) {
+				$result = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." ORDER BY class_start, class_end", ARRAY_A);
+				$f = fopen('php://output', 'w');
+
+				foreach($result as $line)
+					fputcsv($f, $line);
+
+				fseek($f, 0);
+				header('Content-Type: application/csv');
+				header('Content-Disposition: attachement; filename="test.csv"');
+				fpassthru($f);
+			}
+
 			?>
 			<div class="wrap">
 				<h2>Reports</h2>
 				<form action="" method="post">
-
+					<p class="submit">
+						<input type="submit" name="submitted" class="button-primary" value="Gimme That Report!" />
+					</p>
 				</form>
 			</div>
 			<?php

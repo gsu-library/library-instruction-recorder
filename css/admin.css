@@ -1,9 +1,30 @@
 /*
+	General
+*/
+.LIR-hide {
+	display: none;
+}
+
+
+/*
 	Upcoming Classes
 */
 .widefat .date-column {
-	width: 240px;	
+	width: 240px;
 }
+
+#LIR-popup table {
+	margin: 0 auto;
+}
+
+#LIR-popup td {
+	padding: 1px 8px;
+	border-bottom: 1px solid #ccc;
+}
+
+	#LIR-popup tr.last td {
+		border: none;
+	}
 
 
 /*

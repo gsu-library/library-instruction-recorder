@@ -21,7 +21,7 @@ Could use a better description here with perhaps:
 
 == Requirements ==
 
-* JavaScript must be enabled in order for some of the functionality to work. This __should__ be temporary.
+* JavaScript must be enabled in order for some of the functionality to work. This __may__ be temporary.
 
 == Installation ==
 
@@ -48,6 +48,14 @@ Initial release so why not install?
 == Changelog ==
 
 = 0.2.0 =
+Week of 10/7/2013, MB
+
+* Editing a class has now been implemented.
+* My classes listing available on upcoming classes page.
+* Added dependencies for js/admin.js script.
+* Localized js/admin.js script.
+* Details link for upcoming classes now functions.
+
 Week of 9/30/2013, MB
 
 * Fields are now saved on add a class page after a bad submission.
