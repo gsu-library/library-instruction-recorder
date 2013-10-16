@@ -46,7 +46,7 @@ if(!class_exists('LIR')) {
 
 		/*
 			Constructor: __construct
-				Adds register hooks, actions, and filters to WP upon construction. Also loads the options for the plugin.
+				Adds register hooks, actions, and filters to WP upon construction.
 		*/
 		public function __construct() {
 			//Registration hooks.
@@ -58,8 +58,6 @@ if(!class_exists('LIR')) {
 			add_action('admin_menu', array(&$this, 'createMenu'));
 			add_action('admin_init', array(&$this, 'adminInit'));
 			add_action('admin_enqueue_scripts', array(&$this, 'addJSCSS'));
-			//PROBABLY DON'T NEED THIS ANY LONGER
-			add_action('wp_ajax_showDetails', array(&$this, 'showDetails'));
 			//add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 		}
 
@@ -70,7 +68,7 @@ if(!class_exists('LIR')) {
 				constructor.
 
 			Inputs:
-				wpdb	-	Takes the global variable $wpdb as an input to save on duplication.
+				wpdb	-	Takes the global variable $wpdb by reference to save on duplication.
 		*/
 		private function init(&$wpdb = NULL) {
 			//If these values are set then return.
@@ -97,7 +95,7 @@ if(!class_exists('LIR')) {
 			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
-			//Make sure WordPress is compatible.
+			//Make sure compatible WordPress version.
 			global $wp_version;
 			if(version_compare($wp_version, '3.6', '<'))
 				wp_die('This plugin requires WordPress version 3.6 or higher.');
@@ -157,14 +155,12 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: deactivationHook
-				Used to cleanup items after deactivating the plugin. Also is used for testing
-				purposes.
+				Currently used for testing purposes only.
 		*/
 		public static function deactivationHook() {
 			if(!current_user_can('manage_options'))
 				wp_die('You do not have sufficient permissions to access this page.');
 
-			//MAKE THIS A DEBUG STATEMENT?
 			//Remove options saved in wp_options table.
 			//delete_option(self::OPTIONS);
 
@@ -176,7 +172,7 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: uninstallHook
-				Used to cleanup items after uninstalling the plugin (databases, wp_options, &c.).
+				Used to cleanup items after uninstalling the plugin (databases, wp_options, &c).
 		*/
 		public static function uninstallHook() {
 			if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN'))
@@ -201,7 +197,7 @@ if(!class_exists('LIR')) {
 		public function createMenu() {
 			$this->init();
 
-			//SHOULD THIS STAY OR IS IT CONFUSING?
+			//Changes language of "add a class" on the submenu when editing a class.
 			$addClassName = ($_GET['edit']) ? 'Add/Edit a Class' : 'Add a Class';
 
 			add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
@@ -221,7 +217,7 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: adminInit
-				Registers an option group so that the settings page works and can be sanitized.
+				Registers an option group so that the settings page functions and can be sanitized.
 		*/
 		public function adminInit() {
 			register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
@@ -230,8 +226,9 @@ if(!class_exists('LIR')) {
 
 		/*
 			Function: addJSCSS
-				Adds custom CSS and JavaScript links to LIR pages.  Also makes sure jquery is loaded on
-				those pages as well.
+				Adds custom CSS and JavaScript links to LIR pages.  Adds jQuery, jQueryUI, and jQueryUI dialog
+				& datepicker from the local WordPress scripts repository.  Custom added CSS for for styling jQueryUI
+				dialog and datepicker.
 		*/
 		public function addJSCSS() {
 			global $parent_file;
@@ -239,8 +236,6 @@ if(!class_exists('LIR')) {
 			if($parent_file != self::SLUG) return;
 
 			wp_enqueue_script(self::SLUG.'-admin-JS', plugins_url('js/admin.js', __FILE__), array('jquery', 'jquery-ui-datepicker', 'jquery-ui-dialog'));
-			//PROBABLY DON'T NEED THIS ANY LONGER
-			wp_localize_script(self::SLUG.'-admin-JS', 'local_info', array('ajax_url' => admin_url('admin-ajax.php')));
 			wp_enqueue_style(self::SLUG.'-admin', plugins_url('css/admin.css', __FILE__));
 			wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), false, '1.10.3');
 		}
@@ -249,11 +244,11 @@ if(!class_exists('LIR')) {
 		/*
 			Function: defaultPage
 				The default page displayed when clicking on the LIR menu item.  This page shows
-				a list of upcoming classes while allowing users to see the details, edit the entries,
+				a list of upcoming classes while allowing users to see the details, edit entries,
 				and delete entries.
 
 			Outputs:
-				HTML for the default page.
+				HTML for the default (upcoming classes) page.
 		*/
 		public function defaultPage() {
 			if(!current_user_can('edit_posts'))
@@ -301,16 +296,12 @@ if(!class_exists('LIR')) {
 			/*
 				Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
 			*/
-			//CHANGE TO UPCOMING
 			$upcoming = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
 			$upcomingCount = $wpdb->num_rows;
-			//THIS WILL NEED TO WORK AT SOME POINT
 			$incomplete = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance = -1 ORDER BY ".$orderQ);
 			$incompleteCount = $wpdb->num_rows;
-			//AS WILL THIS
 			$previous = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
 			$previousCount = $wpdb->num_rows;
-			//WHA?
 			$myclasses = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
 			$myclassesCount = $wpdb->num_rows;
 
@@ -552,23 +543,9 @@ if(!class_exists('LIR')) {
 
 
 		/*
-			Function: showDetails
-				This fires off after an AJAX request from the upcoming classes page.
-				PROBABLY DON'T NEED THIS FUNCTION ANY LONGER
-		*/
-		public function showDetails() {
-			global $wpdb;
-			$this->init($wpdb);
-
-			$result = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $_POST['id']));
-			echo json_encode($result);
-		}
-
-
-		/*
 			Function: addClassPage
 				The add a class page allows users to add a class to the instruction recorder. This
-				page will also be used for editing existing entries.
+				page is also used for editing existing entries (from the upcoming classes page).
 
 			Outputs:
 				HTML for the add a class page.
@@ -1006,14 +983,19 @@ if(!class_exists('LIR')) {
 
 			global $wpdb;
 			$this->init($wpdb);
-			//CREATE AND POPULATE VARS FOR EACH SECTION BELOW, UPDATE THEM IF POST
+
+			/*
+				Get current fields from database.
+			*/
 			$departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
 			$classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
 			$classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
 			$audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
 			$bools = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool_info'"));
 
-			//Check for form submission and do appropriate action.
+			/*
+				Check for form submission and do appropriate action.
+			*/
 			if(isset($_POST[self::SLUG.'_nonce']) && wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_fields')) {
 				//Add a department / group field to the database.
 				if(!empty($_POST['deptGroupAdd']) && !empty($_POST['deptGroupTB'])) { //CHECK FOR WHITESPACE
@@ -1135,7 +1117,10 @@ if(!class_exists('LIR')) {
 					else
 						$wpdb->update($this->table['meta'], array('value' => serialize($bools)), array('field' => 'bool_info'));
 				}
-			}// End if nonce is set.
+			}
+			/*
+				End submission of page.
+			*/
 
 			?>
 			<div class="wrap">
@@ -1242,10 +1227,6 @@ if(!class_exists('LIR')) {
 
 					<input name="boolSave" type="submit" class="button-secondary" value="Save Bools" />
 					<?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
-
-					<!--<p class="submit">
-						<input type="submit" name="submitted" class="button-primary" value="Save Changes" />
-					</p>-->
 				</form>
 			</div>
 			<?php

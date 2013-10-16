@@ -8,7 +8,7 @@ Stable tag: 0.2.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
-A WordPress plugin for instruction scheduling/recording.
+A library plugin for instruction scheduling/recording.
 
 == Description ==
 
@@ -21,7 +21,7 @@ Could use a better description here with perhaps:
 
 == Requirements ==
 
-* JavaScript must be enabled in order for some of the functionality to work. This __may__ be temporary.
+* JavaScript must be enabled in order for some of the functionality to work.
 
 == Installation ==
 
@@ -42,12 +42,19 @@ It is required and there are no FAQs yet.
 
 == Upgrade Notice ==
 
+= 0.2.0 =
+Core functionality added.
+
 = 0.1.0 =
 Initial release so why not install?
 
 == Changelog ==
 
 = 0.2.0 =
+10/16/2013, MB
+
+* Removed AJAX functionality and localized script.
+
 Week of 10/7/2013, MB
 
 * Editing a class has now been implemented.
