@@ -49,6 +49,11 @@ Core functionality added.
 Initial release so why not install?
 
 == Changelog ==
+= 0.3.0 =
+Week of 3/10/2014, MB
+
+* Refined PHP code, fixed spacing, and made some other visual changes.
+* Added more constants for greater flexibility.
 
 = 0.2.0 =
 10/16/2013, MB
