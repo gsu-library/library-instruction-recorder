@@ -993,10 +993,7 @@ if(!class_exists('LIR')) {
          global $wpdb;
          $this->init($wpdb);
 
-
-         /*
-            Get current fields from database.
-         */
+         //Get current fields from database.
          $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
          $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
          $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
