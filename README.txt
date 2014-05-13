@@ -49,7 +49,16 @@ Core functionality added.
 Initial release so why not install?
 
 == Changelog ==
+
 = 0.3.0 =
+5/13/2014, MB
+
+* Changed last_updated_by field to bigint(20) (to reference WordPress user ID) and associated code.
+
+4/4/2014, MB
+
+* Tweaked some display settings on the fields page.
+
 Week of 3/10/2014, MB
 
 * Refined PHP code, fixed spacing, and made some other visual changes.

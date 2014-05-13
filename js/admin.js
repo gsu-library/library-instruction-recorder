@@ -31,13 +31,28 @@
 /*
 	Function: jQuery(function($){})
 		On document load.
-	
+
 	Inputs:
 		$	-	Sets the jQuery object to be $ since jQuery is running in no conflict mode.
 */
 jQuery(function($) {
+	//Initializes DatePicker for add a class.
 	if($('#classDate').length) {
 		$('#classDate').datepicker({
+			dateFormat : 'm/d/yy'
+		});
+	}
+
+	//Initializes DatePicker for reports.
+	if($('#reportStartDate').length) {
+		$('#reportStartDate').datepicker({
+			dateFormat : 'm/d/yy'
+		});
+	}
+
+	//Initializes DatePicker for reports.
+	if($('#reportEndDate').length) {
+		$('#reportEndDate').datepicker({
 			dateFormat : 'm/d/yy'
 		});
 	}

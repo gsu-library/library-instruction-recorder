@@ -40,8 +40,8 @@ if(!class_exists('LIR')) {
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
       const VERSION = '0.2.0';
-		const TABLE_POSTS = '_posts';
-		const TABLE_META = '_meta';
+      const TABLE_POSTS = '_posts';
+      const TABLE_META = '_meta';
       private $options;
       private $table;
 
@@ -60,6 +60,8 @@ if(!class_exists('LIR')) {
          add_action('admin_menu', array(&$this, 'createMenu'));
          add_action('admin_init', array(&$this, 'adminInit'));
          add_action('admin_enqueue_scripts', array(&$this, 'addCssJS'));
+//			add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'downloadReport'));
+			add_action('admin_post_LIRDL', array(&$this, 'downloadReport'));
          //add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
       }
@@ -91,7 +93,7 @@ if(!class_exists('LIR')) {
       /*
          Function: activationHook
             Checks to make sure WordPress is compatible, sets up tables, and sets up options.
-				**STATIC FUNCTION**
+            **STATIC FUNCTION**
       */
       public static function activationHook() {
          if(!current_user_can('manage_options'))
@@ -112,7 +114,7 @@ if(!class_exists('LIR')) {
          $options = get_option(self::OPTIONS);
 
          //CHECK VERSION NUMBER AND UPDATE DATABASE IF NEEDED
-			//So far not needed.
+         //So far not needed.
 
          //Add LIR tables to the database if they do not exist.
          global $wpdb;
@@ -140,7 +142,7 @@ if(!class_exists('LIR')) {
                      attendance smallint(6) NOT NULL DEFAULT '-1',
                      owner_id bigint(20) NOT NULL,
                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                     last_updated_by varchar(255) NOT NULL,
+                     last_updated_by bigint(20) NOT NULL,
                      PRIMARY KEY  (id)
                   ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
@@ -160,29 +162,31 @@ if(!class_exists('LIR')) {
       /*
          Function: deactivationHook
             Currently used for testing purposes only.
-				**STATIC FUNCTION**
+            **STATIC FUNCTION**
       */
       public static function deactivationHook() {
-         if(!current_user_can('manage_options'))
+         if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
+			}
 
          //Remove options saved in wp_options table.
-         //delete_option(self::OPTIONS);
+         delete_option(self::OPTIONS);
 
          //Remove custom database tables (post & meta).
-         //global $wpdb;
-         //$wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
+         global $wpdb;
+         $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
       }
 
 
       /*
          Function: uninstallHook
             Used to cleanup items after uninstalling the plugin (databases, wp_options, &c).
-				**STATIC FUNCTION**
+            **STATIC FUNCTION**
       */
       public static function uninstallHook() {
-         if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN'))
+         if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN')) {
             wp_die('You do not have sufficient permissions to access this page.');
+			}
 
          //Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
@@ -223,6 +227,11 @@ if(!class_exists('LIR')) {
       */
       public function adminInit() {
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
+			
+			//COMMENT ON THIS PLEASE***********************************
+			if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') { 
+				$this->downloadReport();
+			}
       }
 
 
@@ -255,7 +264,7 @@ if(!class_exists('LIR')) {
       public function defaultPage() {
          if(!current_user_can('edit_posts')) {
             wp_die('You do not have sufficient permissions to access this page.');
-			}
+         }
 
          global $wpdb, $current_user;
          $this->init($wpdb);
@@ -286,30 +295,30 @@ if(!class_exists('LIR')) {
          //Set default order by if non-default view with no order already selected.
          if(!$orderBy && ($_GET['incomplete'] || $_GET['previous']))   $orderBy = 'dateDesc';
 
-         if($orderBy == 'department')            $orderQ = 'department_group, course_number, class_start, class_end';
-         else if($orderBy == 'departmentDesc')   $orderQ = 'department_group DESC, course_number, class_start, class_end';
-         else if($orderBy == 'course')            $orderQ = 'course_number, class_start, class_end';
-         else if($orderBy == 'courseDesc')      $orderQ = 'course_number DESC, class_start, class_end';
-         else if($orderBy == 'date')            $orderQ = 'class_start, class_end';
-         else if($orderBy == 'dateDesc')         $orderQ = 'class_start DESC, class_end';
-         else if($orderBy == 'librarian')         $orderQ = 'librarian_name, class_start, class_end';
-         else if($orderBy == 'librarianDesc')   $orderQ = 'librarian_name DESC, class_start, class_end';
-         else if($orderBy == 'instructor')      $orderQ = 'instructor_name, class_start, class_end';
-         else if($orderBy == 'instructorDesc')   $orderQ = 'instructor_name DESC, class_start, class_end';
-         else                                    $orderQ = 'class_start, class_end';
+         if($orderBy == 'department')          $orderQ = 'department_group, course_number, class_start, class_end';
+         else if($orderBy == 'departmentDesc') $orderQ = 'department_group DESC, course_number, class_start, class_end';
+         else if($orderBy == 'course')         $orderQ = 'course_number, class_start, class_end';
+         else if($orderBy == 'courseDesc')     $orderQ = 'course_number DESC, class_start, class_end';
+         else if($orderBy == 'date')           $orderQ = 'class_start, class_end';
+         else if($orderBy == 'dateDesc')       $orderQ = 'class_start DESC, class_end';
+         else if($orderBy == 'librarian')      $orderQ = 'librarian_name, class_start, class_end';
+         else if($orderBy == 'librarianDesc')  $orderQ = 'librarian_name DESC, class_start, class_end';
+         else if($orderBy == 'instructor')     $orderQ = 'instructor_name, class_start, class_end';
+         else if($orderBy == 'instructorDesc') $orderQ = 'instructor_name DESC, class_start, class_end';
+         else                                  $orderQ = 'class_start, class_end';
 
 
          /*
             Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
          */
-         $upcoming = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
-         $upcomingCount = $wpdb->num_rows;
-         $incomplete = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance = -1 ORDER BY ".$orderQ);
+         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
+         $upcomingCount   = $wpdb->num_rows;
+         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance = -1 ORDER BY ".$orderQ);
          $incompleteCount = $wpdb->num_rows;
-         $previous = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
-         $previousCount = $wpdb->num_rows;
-         $myclasses = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
-         $myclassesCount = $wpdb->num_rows;
+         $previous        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
+         $previousCount   = $wpdb->num_rows;
+         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
+         $myclassesCount  = $wpdb->num_rows;
 
          //Pick list to display and setup for link persistence.
          $mode = '';
@@ -325,8 +334,9 @@ if(!class_exists('LIR')) {
             $result = $myclasses;
             $mode .= '&myclasses=1';
          }
-         else
+         else {
             $result = $upcoming;
+       }
 
          //Query to get bool names.
          $boolInfo = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']. " WHERE field = 'bool_info'"));
@@ -909,7 +919,7 @@ if(!class_exists('LIR')) {
             'class_type'         =>   $_POST['class_type'],
             'audience'            =>   $_POST['audience'],
             'department_group'   =>   $_POST['department_group'],
-            'last_updated_by'      =>   $current_user->user_email,
+            'last_updated_by'      =>   $current_user->id,
          );
 
          //Only mess with owner_id if new submission.
@@ -946,36 +956,95 @@ if(!class_exists('LIR')) {
             HTML for the reports page.
       */
       public function reportsPage() {
-         if(!current_user_can('edit_posts'))
+         if(!current_user_can('edit_posts')) {
             wp_die('You do not have sufficient permissions to access this page.');
-
+			}
+			
          global $wpdb;
          $this->init($wpdb);
-
-         if($_POST['submitted']) {
-            $result = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." ORDER BY class_start, class_end", ARRAY_A);
-            $f = fopen('php://output', 'w');
-
-            foreach($result as $line)
-               fputcsv($f, $line);
-
-            fseek($f, 0);
-            header('Content-Type: application/csv');
-            header('Content-Disposition: attachement; filename="test.csv"');
-            fpassthru($f);
-         }
 
          ?>
          <div class="wrap">
             <h2>Reports</h2>
+            
+            <?php
+				//Debugging
+				if($this->options['debug'] && !empty($_POST)) {
+					echo '<div id="message" class="error">';
+					echo '<p><strong>POST</strong></p>
+					<pre>'.print_r($_POST, true).'</pre>';
+					echo '</div>';
+				}
+				?>
+
             <form action="" method="post">
+					<table class="form-table">
+                  <tr>
+                     <th>Primary Librarian (optional)</th>
+                     <td><select name="librarian_name"><option value=""></option>
+                     <?php
+                     $name = $wpdb->get_results("SELECT DISTINCT librarian_name FROM ".$this->table['posts']." ORDER BY librarian_name");
+
+                     foreach($name as $n) {
+                        echo '<option value="'.$n->librarian_name.'">'.$n->librarian_name.'</option>';
+                     }
+                     ?>
+                     </select></td>
+                  </tr>
+                  <tr>
+                  	<th>Start Date (optional)</th>
+                     <td><input id="reportStartDate" type="text" name="startDate" /></td>
+                  </tr>
+                  <tr>
+                  	<th>End Date (optional)</th>
+                     <td><input id="reportEndDate" type="text" name="endDate" /></td>
+                  </tr>
+               </table>
+               
                <p class="submit">
-                  <input type="submit" name="submitted" class="button-primary" value="Gimme That Report!" />
+               	<input type="hidden" name="action" value="LIR_download_report" />
+                  <input type="submit" name="submit" class="button-primary" value="Gimme That Report!" />
                </p>
             </form>
          </div>
          <?php
       }
+		
+		
+      /*
+         Function: downloadReport
+            Creates and sends CSV file to user.
+
+         Outputs:
+            CSV report file with respective HTML headers.
+      */
+      public function downloadReport() {
+			global $wpdb;
+			$this->init($wpdb);
+			
+			$result = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." ORDER BY class_start, class_end", ARRAY_A);
+			$columns = $wpdb->get_col_info('name');
+
+			if($result) {
+				$f = fopen('php://output', 'w');
+				fputcsv($f, $columns);
+				
+				foreach($result as $line) {
+					fputcsv($f, $line);
+				}
+				
+				//Send the proper header information for a CSV file.
+				header("Content-type: text/csv");
+				header("Content-Disposition: attachment; filename=report.csv");
+				header("Pragma: no-cache");
+				header("Expires: 0");
+				
+				fseek($f, 0);
+				fpassthru($f);
+				fclose($f);
+				exit;
+			}
+		}
 
 
       /*
@@ -988,7 +1057,7 @@ if(!class_exists('LIR')) {
       public function fieldsPage() {
          if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
-			}
+         }
 
          global $wpdb;
          $this->init($wpdb);
@@ -1153,9 +1222,9 @@ if(!class_exists('LIR')) {
                <h3>Department/Group</h3>
                <input name="deptGroupTB" type="text" />
                <input name="deptGroupAdd" type="submit" class="button-secondary" value="Add Dept/Group" /><br /><br />
-               <select id="deptGroupSB" name="deptGroupSB" size="10">
+               <select id="deptGroupSB" name="deptGroupSB" size="<?= count($departmentGroup) < 10 ? count($departmentGroup) : '10'; ?>">
                <?php
-               $i = 1;
+               $i = 1;  //************************************************
                foreach($departmentGroup as $i => $x) {
                   echo '<option value="'.$i.'">'.$x.'</option>';
                }
@@ -1170,9 +1239,9 @@ if(!class_exists('LIR')) {
                <h3>Class Location</h3>
                <input name="classLocTB" type="text" />
                <input name="classLocAdd" type="submit" class="button-secondary" value="Add Class Location" /><br /><br />
-               <select id="classLocSB" name="classLocSB" size="10">
+               <select id="classLocSB" name="classLocSB" size="<?= count($classLocation) < 10 ? count($classLocation) : '10'; ?>">
                <?php
-               $i = 1;
+               $i = 1; //************************************************
                foreach($classLocation as $i => $x) {
                   echo '<option value="'.$i.'">'.$x.'</option>';
                }
@@ -1187,9 +1256,9 @@ if(!class_exists('LIR')) {
                <h3>Class Type</h3>
                <input name="classTypeTB" type="text" />
                <input name="classTypeAdd" type="submit" class="button-secondary" value="Add Class Type" /><br /><br />
-               <select id="classTypeSB" name="classTypeSB" size="10">
+               <select id="classTypeSB" name="classTypeSB" size="<?= count($classType) < 10 ? count($classType) : '10'; ?>">
                <?php
-               $i = 1;
+               $i = 1; //************************************************
                foreach($classType as $i => $x) {
                   echo '<option value="'.$i.'">'.$x.'</option>';
                }
@@ -1204,9 +1273,9 @@ if(!class_exists('LIR')) {
                <h3>Audience</h3>
                <input name="audienceTB" type="text" />
                <input name="audienceAdd" type="submit" class="button-secondary" value="Add Audience" /><br /><br />
-               <select id="audienceSB" name="audienceSB" size="10">
+               <select id="audienceSB" name="audienceSB" size="<?= count($audience) < 10 ? count($audience) : '10'; ?>">
                <?php
-               $i = 1;
+               $i = 1; //************************************************
                foreach($audience as $i => $x) {
                   echo '<option value="'.$i.'">'.$x.'</option>';
                }
@@ -1255,7 +1324,7 @@ if(!class_exists('LIR')) {
       public function settingsPage() {
          if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
-			}
+         }
 
          $this->init();
 
