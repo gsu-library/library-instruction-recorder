@@ -60,8 +60,8 @@ if(!class_exists('LIR')) {
          add_action('admin_menu', array(&$this, 'createMenu'));
          add_action('admin_init', array(&$this, 'adminInit'));
          add_action('admin_enqueue_scripts', array(&$this, 'addCssJS'));
-//			add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'downloadReport'));
-			add_action('admin_post_LIRDL', array(&$this, 'downloadReport'));
+//         add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'generateReport'));
+         add_action('admin_post_LIRDL', array(&$this, 'generateReport'));
          //add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
       }
@@ -167,7 +167,7 @@ if(!class_exists('LIR')) {
       public static function deactivationHook() {
          if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
-			}
+         }
 
          //Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
@@ -186,7 +186,7 @@ if(!class_exists('LIR')) {
       public static function uninstallHook() {
          if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN')) {
             wp_die('You do not have sufficient permissions to access this page.');
-			}
+         }
 
          //Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
@@ -227,11 +227,13 @@ if(!class_exists('LIR')) {
       */
       public function adminInit() {
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
-			
-			//COMMENT ON THIS PLEASE***********************************
-			if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') { 
-				$this->downloadReport();
-			}
+         
+         //COMMENT ON THIS PLEASE***********************************
+         if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') { 
+            if($_POST['option'] == 'file') {
+               $this->generateReport(true);
+            }
+         }
       }
 
 
@@ -958,8 +960,8 @@ if(!class_exists('LIR')) {
       public function reportsPage() {
          if(!current_user_can('edit_posts')) {
             wp_die('You do not have sufficient permissions to access this page.');
-			}
-			
+         }
+         
          global $wpdb;
          $this->init($wpdb);
 
@@ -968,19 +970,19 @@ if(!class_exists('LIR')) {
             <h2>Reports</h2>
             
             <?php
-				//Debugging
-				if($this->options['debug'] && !empty($_POST)) {
-					echo '<div id="message" class="error">';
-					echo '<p><strong>POST</strong></p>
-					<pre>'.print_r($_POST, true).'</pre>';
-					echo '</div>';
-				}
-				?>
+            //Debugging
+            if($this->options['debug'] && !empty($_POST)) {
+               echo '<div id="message" class="error">';
+               echo '<p><strong>POST</strong></p>
+               <pre>'.print_r($_POST, true).'</pre>';
+               echo '</div>';
+            }
+            ?>
 
             <form action="" method="post">
-					<table class="form-table">
+               <table class="form-table">
                   <tr>
-                     <th>Primary Librarian (optional)</th>
+                     <th>Primary Librarian <em>(optional)</em></th>
                      <td><select name="librarian_name"><option value=""></option>
                      <?php
                      $name = $wpdb->get_results("SELECT DISTINCT librarian_name FROM ".$this->table['posts']." ORDER BY librarian_name");
@@ -992,59 +994,138 @@ if(!class_exists('LIR')) {
                      </select></td>
                   </tr>
                   <tr>
-                  	<th>Start Date (optional)</th>
+                     <th>Start Date <em>(optional)</em></th>
                      <td><input id="reportStartDate" type="text" name="startDate" /></td>
                   </tr>
                   <tr>
-                  	<th>End Date (optional)</th>
+                     <th>End Date <em>(optional)</em></th>
                      <td><input id="reportEndDate" type="text" name="endDate" /></td>
+                  </tr>
+                  <tr>
+                     <th>Options</th>
+                     <td><label><input type="radio" name="option" value="file" checked="checked" /> Download File</label><br />
+                         <label><input type="radio" name="option" value="report" /> Display Report</label></td>
                   </tr>
                </table>
                
                <p class="submit">
-               	<input type="hidden" name="action" value="LIR_download_report" />
-                  <input type="submit" name="submit" class="button-primary" value="Gimme That Report!" />
+                  <input type="hidden" name="action" value="LIR_download_report" />
+                  <input type="submit" name="submit" class="button-primary" value="Gimme That Report!" />&nbsp;&nbsp;
+                  <input style="cursor: pointer;" type="reset" value="Reset Form" />
                </p>
             </form>
+
+            <?php
+            if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report' && $_POST['option'] == 'report') {
+               $this->generateReport(false);
+            }
+            ?>
          </div>
          <?php
       }
-		
-		
+      
+      
       /*
-         Function: downloadReport
+         Function: generateReport
             Creates and sends CSV file to user.
 
          Outputs:
             CSV report file with respective HTML headers.
       */
-      public function downloadReport() {
-			global $wpdb;
-			$this->init($wpdb);
-			
-			$result = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." ORDER BY class_start, class_end", ARRAY_A);
-			$columns = $wpdb->get_col_info('name');
+      public function generateReport($fileOutput = true) {
+         global $wpdb;
+         $this->init($wpdb);
+         $fileName = $this->options['slug'];
+         $query = 'SELECT * FROM '.$this->table['posts'];
+         $array = array();
+         
+         //Check if additional parameters have been given.
+         if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
+            //Prepare the query with WHERE statement.
+            $query .= ' WHERE';
+            
+            if(!empty($_POST['librarian_name'])) {
+               $query .= ' librarian_name = %s AND';
+               array_push($array, $_POST['librarian_name']);
+               $fileName .= ' '.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
+            }
+            if(!empty($_POST['startDate'])) {
+               $date = date('Y-m-d', strtotime($_POST['startDate']));
+               $query .= ' class_start >= %s AND';
+               array_push($array, $date.' 00:00:00');
+               $fileName .= ' starting '.$date;
+            }
+            if(!empty($_POST['endDate'])) {
+               $date = date('Y-m-d', strtotime($_POST['endDate']));
+               $query .= ' class_start <= %s AND';
+               array_push($array, $date.' 23:59:59');
+               $fileName .= ' ending '.$date;
+            }
+            
+            //Remove trailing AND from query.
+            $query = substr($query, 0, -4);
+            
+            //Prepare query.
+            $query = $wpdb->prepare($query, $array);
+         }
+         else {
+            $fileName .= ' all';
+         }
+         
+         $fileName .= '.csv';
+         $query .= ' ORDER BY class_start, class_end';
+         $result = $wpdb->get_results($query, ARRAY_A);
+         $column = $wpdb->get_col_info('name');
 
-			if($result) {
-				$f = fopen('php://output', 'w');
-				fputcsv($f, $columns);
-				
-				foreach($result as $line) {
-					fputcsv($f, $line);
-				}
-				
-				//Send the proper header information for a CSV file.
-				header("Content-type: text/csv");
-				header("Content-Disposition: attachment; filename=report.csv");
-				header("Pragma: no-cache");
-				header("Expires: 0");
-				
-				fseek($f, 0);
-				fpassthru($f);
-				fclose($f);
-				exit;
-			}
-		}
+         if($result && $fileOutput) {
+            $f = fopen('php://output', 'w');
+            fputcsv($f, $column);
+            
+            foreach($result as $line) {
+               fputcsv($f, $line);
+            }
+            
+            //Send the proper header information for a CSV file.
+            header("Content-type: text/csv");
+            header("Content-Disposition: attachment; filename=".$fileName);
+            header("Pragma: no-cache");
+            header("Expires: 0");
+            
+            fseek($f, 0);
+            fpassthru($f);
+            fclose($f);
+            exit;
+         }
+         //Do this if output requested is a report.
+         else if($result) {
+            ?>
+            <table style="width:2000px;" class="widefat fixed">
+               <thead>
+                  <tr>
+                     <?php
+                     foreach($column as $c) {
+                        echo '<th>'.str_replace('_', ' ', $c).'</th>';
+                     }
+                     ?>
+                  </tr>
+               </thead>
+               <tbody>
+                  <?php
+                  foreach($result as $line) {
+                     echo '<tr>';
+                     
+                     foreach($line as $l) {
+                        echo '<td>'.$l.'</td>';
+                     }
+                     
+                     echo '</tr>';
+                  }
+                  ?>
+               </tbody>
+            </table>
+            <?php
+         }
+      }
 
 
       /*

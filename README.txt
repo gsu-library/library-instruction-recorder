@@ -51,9 +51,12 @@ Initial release so why not install?
 == Changelog ==
 
 = 0.3.0 =
-5/13/2014, MB
+Week of 5/12/2014, MB
 
 * Changed last_updated_by field to bigint(20) (to reference WordPress user ID) and associated code.
+* Downloading a report now works.
+* Can also display reports (without downloading).
+* Reports have the following optional fields: primary librarian, start date, and end date.
 
 4/4/2014, MB
 
