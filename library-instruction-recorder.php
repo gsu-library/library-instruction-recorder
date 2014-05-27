@@ -60,8 +60,8 @@ if(!class_exists('LIR')) {
          add_action('admin_menu', array(&$this, 'createMenu'));
          add_action('admin_init', array(&$this, 'adminInit'));
          add_action('admin_enqueue_scripts', array(&$this, 'addCssJS'));
-//         add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'generateReport'));
          add_action('admin_post_LIRDL', array(&$this, 'generateReport'));
+         //add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'generateReport'));
          //add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
 
       }
@@ -76,8 +76,8 @@ if(!class_exists('LIR')) {
       */
       private function init(&$wpdb = NULL) {
          //If these values are set then return.
-         if(isset($this->options) && isset($this->table)) return;
-         if($wpdb == NULL) global $wpdb;
+         if(isset($this->options) && isset($this->table)) { return; }
+         if($wpdb == NULL) { global $wpdb; }
 
          //Load options.
          $this->options = get_option(self::OPTIONS, NULL);
@@ -96,13 +96,15 @@ if(!class_exists('LIR')) {
             **STATIC FUNCTION**
       */
       public static function activationHook() {
-         if(!current_user_can('manage_options'))
+         if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
+         }
 
          //Make sure compatible WordPress version.
          global $wp_version;
-         if(version_compare($wp_version, '3.6', '<'))
+         if(version_compare($wp_version, '3.6', '<')) {
             wp_die('This plugin requires WordPress version 3.6 or higher.');
+         }
 
          //Create default options for wp_options if they don't already exist.
          $options = array('debug'    =>  false,
@@ -175,6 +177,7 @@ if(!class_exists('LIR')) {
          //Remove custom database tables (post & meta).
          global $wpdb;
          $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
+         //*/
       }
 
 
@@ -295,32 +298,32 @@ if(!class_exists('LIR')) {
          $orderBy = $_GET['orderby'];
 
          //Set default order by if non-default view with no order already selected.
-         if(!$orderBy && ($_GET['incomplete'] || $_GET['previous']))   $orderBy = 'dateDesc';
+         if(!$orderBy && ($_GET['incomplete'] || $_GET['previous'])) { $orderBy = 'dateDesc'; }
 
-         if($orderBy == 'department')          $orderQ = 'department_group, course_number, class_start, class_end';
-         else if($orderBy == 'departmentDesc') $orderQ = 'department_group DESC, course_number, class_start, class_end';
-         else if($orderBy == 'course')         $orderQ = 'course_number, class_start, class_end';
-         else if($orderBy == 'courseDesc')     $orderQ = 'course_number DESC, class_start, class_end';
-         else if($orderBy == 'date')           $orderQ = 'class_start, class_end';
-         else if($orderBy == 'dateDesc')       $orderQ = 'class_start DESC, class_end';
-         else if($orderBy == 'librarian')      $orderQ = 'librarian_name, class_start, class_end';
-         else if($orderBy == 'librarianDesc')  $orderQ = 'librarian_name DESC, class_start, class_end';
-         else if($orderBy == 'instructor')     $orderQ = 'instructor_name, class_start, class_end';
-         else if($orderBy == 'instructorDesc') $orderQ = 'instructor_name DESC, class_start, class_end';
-         else                                  $orderQ = 'class_start, class_end';
+         if($orderBy == 'department')            { $orderQ = 'department_group, course_number, class_start, class_end'; }
+         else if($orderBy == 'departmentDesc')   { $orderQ = 'department_group DESC, course_number, class_start, class_end'; }
+         else if($orderBy == 'course')           { $orderQ = 'course_number, class_start, class_end'; }
+         else if($orderBy == 'courseDesc')       { $orderQ = 'course_number DESC, class_start, class_end'; }
+         else if($orderBy == 'date')             { $orderQ = 'class_start, class_end'; }
+         else if($orderBy == 'dateDesc')         { $orderQ = 'class_start DESC, class_end'; }
+         else if($orderBy == 'librarian')        { $orderQ = 'librarian_name, class_start, class_end'; }
+         else if($orderBy == 'librarianDesc')    { $orderQ = 'librarian_name DESC, class_start, class_end'; }
+         else if($orderBy == 'instructor')       { $orderQ = 'instructor_name, class_start, class_end'; }
+         else if($orderBy == 'instructorDesc')   { $orderQ = 'instructor_name DESC, class_start, class_end'; }
+         else                                    { $orderQ = 'class_start, class_end'; }
 
 
          /*
             Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
          */
-         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
-         $upcomingCount   = $wpdb->num_rows;
-         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance = -1 ORDER BY ".$orderQ);
-         $incompleteCount = $wpdb->num_rows;
-         $previous        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
-         $previousCount   = $wpdb->num_rows;
-         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
-         $myclassesCount  = $wpdb->num_rows;
+         $upcoming          =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
+         $upcomingCount     =   $wpdb->num_rows;
+         $incomplete        =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY ".$orderQ);
+         $incompleteCount   =   $wpdb->num_rows;
+         $previous          =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
+         $previousCount     =   $wpdb->num_rows;
+         $myclasses         =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
+         $myclassesCount    =   $wpdb->num_rows;
 
          //Pick list to display and setup for link persistence.
          $mode = '';
@@ -338,7 +341,7 @@ if(!class_exists('LIR')) {
          }
          else {
             $result = $upcoming;
-       }
+         }
 
          //Query to get bool names.
          $boolInfo = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']. " WHERE field = 'bool_info'"));
@@ -353,13 +356,13 @@ if(!class_exists('LIR')) {
             */
             if($delete && $classRemoved) {
                echo '<div id="message" class="updated">
-                  <p><strong>The class has been removed!</strong></p>
-               </div>';
+                     <p><strong>The class has been removed!</strong></p>
+                     </div>';
             }
             else if($delete && !$classRemoved) {
                echo '<div id="message" class="error">
-                  <p><strong>There was a problem removing the class.</strong></p>
-               </div>';
+                     <p><strong>There was a problem removing the class.</strong></p>
+                     </div>';
             }
             ?>
 
@@ -367,19 +370,19 @@ if(!class_exists('LIR')) {
                <?php
                //Upcoming classes.
                echo '<li><a href="'.$baseUrl.'"';
-               if(!$_GET['incomplete'] && !$_GET['previous'] && !$_GET['myclasses']) echo ' class="current"';
+               if(!$_GET['incomplete'] && !$_GET['previous'] && !$_GET['myclasses']) { echo ' class="current"'; }
                echo '>Upcoming <span class="count">('.$upcomingCount.')</span></a> |</li>';
                //Incomplete classes.
                echo '<li><a href="'.$baseUrl.'&incomplete=1"';
-               if($_GET['incomplete'] == '1') echo ' class="current"';
+               if($_GET['incomplete'] == '1') { echo ' class="current"'; }
                echo '>Incomplete <span class="count">('.$incompleteCount.')</span></a> |</li>';
                //Previous classes.
                echo '<li><a href="'.$baseUrl.'&previous=1"';
-               if($_GET['previous'] == '1') echo ' class="current"';
+               if($_GET['previous'] == '1') { echo ' class="current"'; }
                echo '>Previous <span class="count">('.$previousCount.')</span></a> |</li>';
                //My classes.
                echo '<li><a href="'.$baseUrl.'&myclasses=1"';
-               if($_GET['myclasses'] == '1') echo ' class="current"';
+               if($_GET['myclasses'] == '1') { echo ' class="current"'; }
                echo '>My Classes <span class="count">('.$myclassesCount.')</span></a></li>';
                ?>
             </ul>
@@ -393,44 +396,64 @@ if(!class_exists('LIR')) {
                <?php
                $tableHF = '<th class="check-column">&nbsp;</th>';
 
+
                /*
                   The following section is used to created the table headers and footers with sorting functionality.
                */
                //Department/Group THead & TFoot
-               if($orderBy == 'department')
+               if($orderBy == 'department') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=departmentDesc'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
-               else if($orderBy == 'departmentDesc')
+               }
+               else if($orderBy == 'departmentDesc') {
                   $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
-               else
+               }
+               else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
+               }
+               
                //Course # THead & TFoot
-               if($orderBy == 'course')
+               if($orderBy == 'course') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=courseDesc'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
-               else if($orderBy == 'courseDesc')
+               }
+               else if($orderBy == 'courseDesc') {
                   $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
-               else
+               }
+               else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
+               }
+               
                //Date/Time THead & TFoot
-               if(!isset($orderBy) || $orderBy == 'date')
+               if(!isset($orderBy) || $orderBy == 'date') {
                   $tableHF .= '<th class="date-column sorted asc"><a href="'.$baseUrl.'&orderby=dateDesc'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
-               else if($orderBy == 'dateDesc')
+               }
+               else if($orderBy == 'dateDesc') {
                   $tableHF .= '<th class="date-column sorted desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
-               else
+               }
+               else {
                   $tableHF .= '<th class="date-column sortable desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
+               }
+               
                //Primary Librarian THead & TFoot
-               if($orderBy == 'librarian')
+               if($orderBy == 'librarian') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=librarianDesc'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
-               else if($orderBy == 'librarianDesc')
+               }
+               else if($orderBy == 'librarianDesc') {
                   $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
-               else
+               }
+               else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
+               }
+               
                //Instructor THead & TFoot
-               if($orderBy == 'instructor')
+               if($orderBy == 'instructor') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=instructorDesc'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
-               else if($orderBy == 'instructorDesc')
+               }
+               else if($orderBy == 'instructorDesc') {
                   $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=instructor'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
-               else
+               }
+               else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=instructor'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
+               }
 
                $tableHF .= '<th>Options</th>';
 
@@ -440,19 +463,23 @@ if(!class_exists('LIR')) {
 
                //Post a table row for each class in $result.
                foreach($result as $class) {
-                  if($class->class_description)
+                  if($class->class_description) {
                      echo '<tr class="'.self::SLUG.'-'.$class->id.'" title="'.$class->class_description.'">';
-                  else
+                  }
+                  else {
                      echo '<tr class="'.self::SLUG.'-'.$class->id.'">';
+                  }
 
                   echo '<th>&nbsp;</th>
                         <td name="Department-Group">'.$class->department_group.'</td>';
 
                   //Assign name=skip if not present for details.
-                  if($class->course_number)
+                  if($class->course_number) {
                      echo '<td name="Course_Number">'.$class->course_number.'</td>';
-                  else
+                  }
+                  else {
                      echo '<td name="skip">&nbsp;</td>';
+                  }
 
                   //Class location, class type, audience for details.
                   echo '<td name="Class_Location" class="LIR-hide">'.$class->class_location.'</td>
@@ -472,8 +499,9 @@ if(!class_exists('LIR')) {
                   echo '<td name="Primary_Librarian">'.$class->librarian_name.'</td>';
 
                   //Secondary librarian if present (for details).
-                  if($class->librarian2_name)
+                  if($class->librarian2_name) {
                      echo '<td name="Secondary_Librarian" class="LIR-hide">'.$class->librarian2_name.'</td>';
+                  }
 
                   //Instructor name and email.
                   if($class->instructor_name && $class->instructor_email) {
@@ -485,54 +513,65 @@ if(!class_exists('LIR')) {
                   }
 
                   //Instructor email for details.
-                  if($class->instructor_email)
+                  if($class->instructor_email) {
                      echo '<td name="Instructor_Email" class="LIR-hide">'.$class->instructor_email.'</td>';
+                  }
 
                   //Instructor phone for details.
-                  if($class->instructor_phone)
+                  if($class->instructor_phone) {
                      echo '<td name="Instructor_Phone" class="LIR-hide">'.$class->instructor_phone.'</td>';
+                  }
 
                   //Bools for details.
                   if($boolInfo['bool1Enabled']) {
                      echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool1Value'])).'" class="LIR-hide">';
 
-                     if($class->bool1)
+                     if($class->bool1) {
                         echo 'yes';
-                     else
+                     }
+                     else {
                         echo 'no';
+                     }
 
                      echo '</td>';
                   }
                   if($boolInfo['bool2Enabled']) {
                      echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool2Value'])).'" class="LIR-hide">';
 
-                     if($class->bool2)
+                     if($class->bool2) {
                         echo 'yes';
-                     else
+                     }
+                     else {
                         echo 'no';
+                     }
 
                      echo '</td>';
                   }
                   if($boolInfo['bool3Enabled']) {
                      echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool3Value'])).'" class="LIR-hide">';
 
-                     if($class->bool3)
+                     if($class->bool3) {
                         echo 'yes';
-                     else
+                     }
+                     else {
                         echo 'no';
+                     }
 
                      echo '</td>';
                   }
 
                   //Attendance for details.
-                  if($class->attendance != -1)
+                  if($class->attendance != NULL) {
                      echo '<td name="Attendance" class="LIR-hide">'.$class->attendance.'</td>';
-                  else
+                  }
+                  else {
                      echo '<td name="Attendance" class="LIR-hide">no attendance recorded</td>';
+                  }
 
                   //Description for details.
-                  if($class->class_description)
+                  if($class->class_description) {
                      echo '<td name="Class_Description" class="LIR-hide">'.$class->class_description.'</td>';
+                  }
 
                   //Last updated for details.
                   echo '<td name="Last_Updated" class="LIR-hide">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</td>';
@@ -543,8 +582,9 @@ if(!class_exists('LIR')) {
                   //Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
                      $extras = '';
-                     if($orderBy)    $extras .= '&orderby='.$orderBy;
-                     if($mode)      $extras .= $mode;
+
+                     if($orderBy)   { $extras .= '&orderby='.$orderBy; }
+                     if($mode)      { $extras .= $mode; }
 
                      echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="removeLink" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
                   }
@@ -572,8 +612,9 @@ if(!class_exists('LIR')) {
             <addUpdateClass>
       */
       public function addClassPage() {
-         if(!current_user_can('edit_posts'))
+         if(!current_user_can('edit_posts')) {
             wp_die('You do not have sufficient permissions to access this page.');
+         }
 
          global $user_identity, $wpdb, $current_user;
          $this->init($wpdb);
@@ -592,12 +633,12 @@ if(!class_exists('LIR')) {
             foreach($class as $x => $y) {
                $_POST[$x] = $y;
             }
-				
-				//Permission checking.
-				if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
-					array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
-					$_POST['submitted'] = NULL; //Ensures the class is never processed for submission.
-				}
+            
+            //Permission checking.
+            if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
+               array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
+               $_POST['submitted'] = NULL; //Ensures the class is never processed for submission.
+            }
          }
 
 
@@ -608,21 +649,21 @@ if(!class_exists('LIR')) {
             $classAdded = false;
 
             //Check to make sure all required fields have been submitted.
-            if(empty($_POST['librarian_name']))      array_push($error, 'Missing Field: Primary Librarian');
-            if(empty($_POST['instructor_name']))   array_push($error, 'Missing Field: Instructor Name');
-            if(empty($_POST['department_group']))   array_push($error, 'Missing Field: Department/Group');
-            if(empty($_POST['class_date']))         array_push($error, 'Missing Field: Class Date');
-            if(empty($_POST['class_time']))         array_push($error, 'Missing Field: Class Time');
-            if(empty($_POST['class_length']))      array_push($error, 'Missing Field: Class Length');
-            if(empty($_POST['class_location']))      array_push($error, 'Missing Field: Class Location');
-            if(empty($_POST['class_type']))         array_push($error, 'Missing Field: Class Type');
-            if(empty($_POST['audience']))            array_push($error, 'Missing Field: Audience');
+            if(empty($_POST['librarian_name']))     { array_push($error, 'Missing Field: Primary Librarian'); }
+            if(empty($_POST['instructor_name']))    { array_push($error, 'Missing Field: Instructor Name'); }
+            if(empty($_POST['department_group']))   { array_push($error, 'Missing Field: Department/Group'); }
+            if(empty($_POST['class_date']))         { array_push($error, 'Missing Field: Class Date'); }
+            if(empty($_POST['class_time']))         { array_push($error, 'Missing Field: Class Time'); }
+            if(empty($_POST['class_length']))       { array_push($error, 'Missing Field: Class Length'); }
+            if(empty($_POST['class_location']))     { array_push($error, 'Missing Field: Class Location'); }
+            if(empty($_POST['class_type']))         { array_push($error, 'Missing Field: Class Type'); }
+            if(empty($_POST['audience']))           { array_push($error, 'Missing Field: Audience'); }
 
             //Go to function to insert data into database.
-            if(empty($error)) $classAdded = $this->addUpdateClass($_POST['edit']);
+            if(empty($error)) { $classAdded = $this->addUpdateClass($_POST['edit']); }
             //If database insert failed, push error.
-            if(!$classAdded && empty($error) && $_POST['edit']) array_push($error, 'An error has occurred while trying to update the class. Please try again.');
-            else if(!$classAdded && empty($error)) array_push($error, 'An error has occurred while trying to submit the class. Please try again.');
+            if(!$classAdded && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
+            else if(!$classAdded && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
          }
 
          ?>
@@ -643,8 +684,9 @@ if(!class_exists('LIR')) {
                if(!empty($debug)) {
                   echo '<p><strong>Other</strong></p>';
 
-                  foreach($debug as $x => $y)
+                  foreach($debug as $x => $y) {
                      echo '<p>'.$x.': '.$y.'</p>';
+                  }
                }
 
                echo '<p>Last Query: '.$wpdb->last_query.'</p>';
@@ -685,13 +727,15 @@ if(!class_exists('LIR')) {
                      $user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->prefix."users ORDER BY display_name");
 
                      foreach($user as $u) {
-                        if($u->display_name == "admin") continue;
+                        if($u->display_name == "admin") { continue; }
                         echo '<option value="'.$u->display_name.'"';
 
-                        if(!$classAdded && ($u->display_name == $_POST['librarian_name']))
+                        if(!$classAdded && ($u->display_name == $_POST['librarian_name'])) {
                            echo ' selected="selected"';
-                        else if(($classAdded || !isset($_POST['librarian_name'])) && $u->display_name == $user_identity)
+                        }
+                        else if(($classAdded || !isset($_POST['librarian_name'])) && $u->display_name == $user_identity) {
                            echo ' selected="selected"';
+                        }
 
                         echo '>'.$u->display_name.'</option>';
                      }
@@ -703,12 +747,14 @@ if(!class_exists('LIR')) {
                      <td><select name="librarian2_name"><option value=""></option>
                      <?php
                      foreach($user as $u) {
-                        if($u->display_name == "admin") continue;
+                        if($u->display_name == "admin") { continue; }
 
-                        if(!$classAdded && ($u->display_name == $_POST['librarian2_name']))
+                        if(!$classAdded && ($u->display_name == $_POST['librarian2_name'])) {
                            echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
-                        else
+                        }
+                        else {
                            echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';                     }
+                        }
                      ?>
                      </select></td>
                   </tr>
@@ -736,10 +782,12 @@ if(!class_exists('LIR')) {
                         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
 
                         foreach($departmentGroup as $x) {
-                           if((esc_attr($x) == $_POST['department_group']) && !$classAdded)
+                           if((esc_attr($x) == $_POST['department_group']) && !$classAdded) {
                               echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
-                           else
+                           }
+                           else {
                               echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+                           }
                         }
                         ?>
                      </select></td>
@@ -754,13 +802,15 @@ if(!class_exists('LIR')) {
                      <?php
                      echo '<input type="text" id="classDate" name="class_date" value="';
 
-                     if(!$classAdded && !empty($_POST['class_date']))
+                     if(!$classAdded && !empty($_POST['class_date'])) {
                         echo $_POST['class_date'];
+                     }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
                         echo date('n/j/Y', strtotime($_POST['class_start']));
                      }
-                     else
+                     else {
                         echo date('n/j/Y');
+                     }
 
                      echo '" />';
                      ?>
@@ -769,8 +819,9 @@ if(!class_exists('LIR')) {
                   <tr>
                      <th>*Class Time (H:MM AM|PM)</th>
                      <?php
-                     if(!$classAdded && !empty($_POST['class_time']))
+                     if(!$classAdded && !empty($_POST['class_time'])) {
                         $time = date('g:i A', strtotime($_POST['class_time']));
+                     }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
                         $time = date('g:i A', strtotime($_POST['class_start']));
                         $_POST['class_length'] = (strtotime($_POST['class_end']) - strtotime($_POST['class_start'])) / 60;
@@ -805,8 +856,9 @@ if(!class_exists('LIR')) {
                         foreach($classLocation as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && $_POST['class_location'] == esc_attr($x))
+                           if(!$classAdded && $_POST['class_location'] == esc_attr($x)) {
                               echo ' selected="selected"';
+                           }
 
                            echo '>'.$x.'</option>';
                         }
@@ -823,8 +875,9 @@ if(!class_exists('LIR')) {
                         foreach($classType as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && $_POST['class_type'] == esc_attr($x))
+                           if(!$classAdded && $_POST['class_type'] == esc_attr($x)) {
                               echo ' selected="selected"';
+                           }
 
                            echo '>'.$x.'</option>';
                         }
@@ -841,8 +894,9 @@ if(!class_exists('LIR')) {
                         foreach($audience as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && $_POST['audience'] == esc_attr($x))
+                           if(!$classAdded && $_POST['audience'] == esc_attr($x)) {
                               echo ' selected="selected"';
+                           }
 
                            echo '>'.$x.'</option>';
                         }
@@ -877,7 +931,7 @@ if(!class_exists('LIR')) {
                   ?>
                   <tr>
                      <th>Number of Students Attended</th>
-                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance']) && $_POST['attendance'] != -1) echo $_POST['attendance']; ?>" /></td>
+                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance']) && $_POST['attendance'] != NULL) echo $_POST['attendance']; ?>" /></td>
                   </tr>
                </table>
 
@@ -912,17 +966,17 @@ if(!class_exists('LIR')) {
          get_currentuserinfo();
 
          $data = array(
-            'librarian_name'      =>   $_POST['librarian_name'],
-            'instructor_name'      =>   $_POST['instructor_name'],
-            'class_location'      =>   $_POST['class_location'],
+            'librarian_name'     =>   $_POST['librarian_name'],
+            'instructor_name'    =>   $_POST['instructor_name'],
+            'class_location'     =>   $_POST['class_location'],
             'class_type'         =>   $_POST['class_type'],
-            'audience'            =>   $_POST['audience'],
+            'audience'           =>   $_POST['audience'],
             'department_group'   =>   $_POST['department_group'],
-            'last_updated_by'      =>   $current_user->id,
+            'last_updated_by'    =>   $current_user->id,
          );
 
          //Only mess with owner_id if new submission.
-         if(!$id) $data['owner_id'] = $current_user->id;
+         if(!$id) { $data['owner_id'] = $current_user->id; }
 
          //$data['class_start'] = date('Y-m-d', strtotime($_POST['class_date'])).' '.$_POST['class_time'];
          $data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
@@ -931,19 +985,19 @@ if(!class_exists('LIR')) {
          $data['bool2'] = isset($_POST['bool2']) ? 1 : 0;
          $data['bool3'] = isset($_POST['bool3']) ? 1 : 0;
 
-         if(!empty($_POST['librarian2_name']))      $data['librarian2_name'] = $_POST['librarian2_name'];
-         if(!empty($_POST['instructor_email']))      $data['instructor_email'] = $_POST['instructor_email'];
-         if(!empty($_POST['instructor_phone']))      $data['instructor_phone'] = $_POST['instructor_phone'];
-         if(!empty($_POST['class_description']))   $data['class_description'] = $_POST['class_description'];
-         if(!empty($_POST['course_number']))         $data['course_number'] = $_POST['course_number'];
-         if(!empty($_POST['attendance']))            $data['attendance'] = $_POST['attendance'];
+         if(!empty($_POST['librarian2_name']))     { $data['librarian2_name'] = $_POST['librarian2_name']; }
+         if(!empty($_POST['instructor_email']))    { $data['instructor_email'] = $_POST['instructor_email']; }
+         if(!empty($_POST['instructor_phone']))    { $data['instructor_phone'] = $_POST['instructor_phone']; }
+         if(!empty($_POST['class_description']))   { $data['class_description'] = $_POST['class_description']; }
+         if(!empty($_POST['course_number']))       { $data['course_number'] = $_POST['course_number']; }
+         if(!empty($_POST['attendance']))          { $data['attendance'] = $_POST['attendance']; }
 
-         if($id)   $success = $wpdb->update($this->table['posts'], $data, array('id' => $id));
-         else      $success = $wpdb->insert($this->table['posts'], $data);
+         if($id)   { $success = $wpdb->update($this->table['posts'], $data, array('id' => $id)); }
+         else      { $success = $wpdb->insert($this->table['posts'], $data); }
 
-         if($success && !$id)   return $wpdb->insert_id; //Returns auto increment number on successful insertion.
-         else if($success)      return $success; //Returns number of rows updated on successful update.
-         else                   return false; //Returns false if either update or insert failed.
+         if($success && !$id)   { return $wpdb->insert_id; } //Returns auto increment number on successful insertion.
+         else if($success)      { return $success; } //Returns number of rows updated on successful update.
+         else                   { return false; } //Returns false if either update or insert failed.
       }
 
 
@@ -1034,10 +1088,10 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
          $fileName = $this->options['slug'];
          $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
-			          class_start, class_end, class_location, class_type, audience, class_description, department_group,
-						 course_number, bool1, bool2, bool3, attendance, u.display_name as owner, last_updated,
-						 u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->prefix.'users u ON p.owner_id = u.ID
-						 JOIN '.$wpdb->prefix.'users u2 ON p.last_updated_by = u2.ID';
+                   class_start, class_end, class_location, class_type, audience, class_description, department_group,
+                   course_number, bool1, bool2, bool3, attendance, u.display_name as owner, last_updated,
+                   u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->prefix.'users u ON p.owner_id = u.ID
+                   JOIN '.$wpdb->prefix.'users u2 ON p.last_updated_by = u2.ID';
          $array = array();
          
          //Check if additional parameters have been given.
@@ -1176,10 +1230,12 @@ if(!class_exists('LIR')) {
                if(!empty($temp)) {
                   unset($departmentGroup[$_POST['deptGroupSB']]);
 
-                  if($departmentGroup)
+                  if($departmentGroup) {
                      $wpdb->update($this->table['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
-                  else
+                  }
+                  else {
                      $wpdb->delete($this->table['meta'], array('field' => 'department_group_values'));
+                  }
                }
             }
             //Add a class location field to the database.
@@ -1202,10 +1258,12 @@ if(!class_exists('LIR')) {
                if(!empty($temp)) {
                   unset($classLocation[$_POST['classLocSB']]);
 
-                  if($classLocation)
+                  if($classLocation) {
                      $wpdb->update($this->table['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
-                  else
+                  }
+                  else {
                      $wpdb->delete($this->table['meta'], array('field' => 'class_location_values'));
+                  }
                }
             }
             //Add a class type field to the database.
@@ -1228,10 +1286,12 @@ if(!class_exists('LIR')) {
                if(!empty($temp)) {
                   unset($classType[$_POST['classTypeSB']]);
 
-                  if($classType)
+                  if($classType) {
                      $wpdb->update($this->table['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
-                  else
+                  }
+                  else {
                      $wpdb->delete($this->table['meta'], array('field' => 'class_type_values'));
+                  }
                }
             }
             //Add an audience field to the database.
@@ -1254,10 +1314,12 @@ if(!class_exists('LIR')) {
                if(!empty($temp)) {
                   unset($audience[$_POST['audienceSB']]);
 
-                  if($audience)
+                  if($audience) {
                      $wpdb->update($this->table['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
-                  else
+                  }
+                  else {
                      $wpdb->delete($this->table['meta'], array('field' => 'audience_values'));
+                  }
                }
             }
             //Adds bool options to the database.
@@ -1271,10 +1333,12 @@ if(!class_exists('LIR')) {
                $bools['bool3Value'] = $_POST['bool3Value'];
                $bools['bool3Enabled'] = $_POST['bool3Enabled'];
 
-               if($insert)
+               if($insert) {
                   $wpdb->insert($this->table['meta'], array('field' => 'bool_info', 'value' => serialize($bools)));
-               else
+               }
+               else {
                   $wpdb->update($this->table['meta'], array('value' => serialize($bools)), array('field' => 'bool_info'));
+               }
             }
          }
          /*
@@ -1372,18 +1436,18 @@ if(!class_exists('LIR')) {
                <h3>Bools</h3>
                <h4>Bool 1</h4>
                <p><label>Name: <input type="text" name="bool1Value" value="<?= $bools['bool1Value']; ?>" /></label>
-               <label>Enabled <input type="radio" name="bool1Enabled" value="1" <?php if($bools['bool1Enabled']) echo 'checked="checked "'; ?> /></label>
-               <label>Disabled <input type="radio" name="bool1Enabled" value="0" <?php if(!$bools['bool1Enabled']) echo 'checked="checked "'; ?> /></p></label>
+               <label>Enabled <input type="radio" name="bool1Enabled" value="1" <?php if($bools['bool1Enabled']) { echo 'checked="checked "'; } ?> /></label>
+               <label>Disabled <input type="radio" name="bool1Enabled" value="0" <?php if(!$bools['bool1Enabled']) { echo 'checked="checked "'; } ?> /></p></label>
 
                <h4>Bool 2</h4>
                <p><label>Name: <input type="text" name="bool2Value" value="<?= $bools['bool2Value']; ?>" /></label>
-               <label>Enabled <input type="radio" name="bool2Enabled" value="1" <?php if($bools['bool2Enabled']) echo 'checked="checked "'; ?> /></label>
-               <label>Disabled <input type="radio" name="bool2Enabled" value="0" <?php if(!$bools['bool2Enabled']) echo 'checked="checked "'; ?> /></p></label>
+               <label>Enabled <input type="radio" name="bool2Enabled" value="1" <?php if($bools['bool2Enabled']) { echo 'checked="checked "'; } ?> /></label>
+               <label>Disabled <input type="radio" name="bool2Enabled" value="0" <?php if(!$bools['bool2Enabled']) { echo 'checked="checked "'; } ?> /></p></label>
 
                <h4>Bool 3</h4>
                <p><label>Name: <input type="text" name="bool3Value" value="<?= $bools['bool3Value']; ?>" /></label>
-               <label>Enabled <input type="radio" name="bool3Enabled" value="1" <?php if($bools['bool3Enabled']) echo 'checked="checked "'; ?> /></label>
-               <label>Disabled <input type="radio" name="bool3Enabled" value="0" <?php if(!$bools['bool3Enabled']) echo 'checked="checked "'; ?> /></p></label>
+               <label>Enabled <input type="radio" name="bool3Enabled" value="1" <?php if($bools['bool3Enabled']) { echo 'checked="checked "'; } ?> /></label>
+               <label>Disabled <input type="radio" name="bool3Enabled" value="0" <?php if(!$bools['bool3Enabled']) { echo 'checked="checked "'; } ?> /></p></label>
 
                <input name="boolSave" type="submit" class="button-secondary" value="Save Bools" />
                <?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
