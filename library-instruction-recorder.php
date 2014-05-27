@@ -139,7 +139,7 @@ if(!class_exists('LIR')) {
                      bool1 tinyint(1) NOT NULL DEFAULT '0',
                      bool2 tinyint(1) NOT NULL DEFAULT '0',
                      bool3 tinyint(1) NOT NULL DEFAULT '0',
-                     attendance smallint(6) NOT NULL DEFAULT '-1',
+                     attendance smallint(6) UNSIGNED DEFAULT NULL,
                      owner_id bigint(20) NOT NULL,
                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
                      last_updated_by bigint(20) NOT NULL,
@@ -592,15 +592,12 @@ if(!class_exists('LIR')) {
             foreach($class as $x => $y) {
                $_POST[$x] = $y;
             }
-         }
-
-
-         /*
-            Permission checking.
-         */
-         if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
-            array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
-            $_POST['submitted'] = NULL; //Ensures the class is never processed for submission.
+				
+				//Permission checking.
+				if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
+					array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
+					$_POST['submitted'] = NULL; //Ensures the class is never processed for submission.
+				}
          }
 
 
@@ -1036,7 +1033,11 @@ if(!class_exists('LIR')) {
          global $wpdb;
          $this->init($wpdb);
          $fileName = $this->options['slug'];
-         $query = 'SELECT * FROM '.$this->table['posts'];
+         $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
+			          class_start, class_end, class_location, class_type, audience, class_description, department_group,
+						 course_number, bool1, bool2, bool3, attendance, u.display_name as owner, last_updated,
+						 u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->prefix.'users u ON p.owner_id = u.ID
+						 JOIN '.$wpdb->prefix.'users u2 ON p.last_updated_by = u2.ID';
          $array = array();
          
          //Check if additional parameters have been given.

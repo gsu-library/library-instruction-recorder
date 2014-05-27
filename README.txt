@@ -51,6 +51,12 @@ Initial release so why not install?
 == Changelog ==
 
 = 0.3.0 =
+Week of 5/26/2014, MB
+
+* Fixed a permission error with non-admins adding a class (check in wrong place).
+* Reports show names in place of WordPress IDs now.
+* Table structure change - attendance now unsigned and defaults at NULL.
+
 Week of 5/12/2014, MB
 
 * Changed last_updated_by field to bigint(20) (to reference WordPress user ID) and associated code.
