@@ -3,7 +3,7 @@ Contributors: mbrooks34
 Donate link: http://library.gsu.edu/giving/
 Tags: library, library instruction recorder, instruction scheduling
 Requires at least: 3.6
-Tested up to: 3.6
+Tested up to: 3.9.1
 Stable tag: 0.2.0
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html

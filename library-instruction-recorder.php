@@ -230,9 +230,9 @@ if(!class_exists('LIR')) {
       */
       public function adminInit() {
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
-         
+
          //COMMENT ON THIS PLEASE***********************************
-         if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') { 
+         if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') {
             if($_POST['option'] == 'file') {
                $this->generateReport(true);
             }
@@ -410,7 +410,7 @@ if(!class_exists('LIR')) {
                else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
                }
-               
+
                //Course # THead & TFoot
                if($orderBy == 'course') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=courseDesc'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
@@ -421,7 +421,7 @@ if(!class_exists('LIR')) {
                else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
                }
-               
+
                //Date/Time THead & TFoot
                if(!isset($orderBy) || $orderBy == 'date') {
                   $tableHF .= '<th class="date-column sorted asc"><a href="'.$baseUrl.'&orderby=dateDesc'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
@@ -432,7 +432,7 @@ if(!class_exists('LIR')) {
                else {
                   $tableHF .= '<th class="date-column sortable desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
                }
-               
+
                //Primary Librarian THead & TFoot
                if($orderBy == 'librarian') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=librarianDesc'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
@@ -443,7 +443,7 @@ if(!class_exists('LIR')) {
                else {
                   $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
                }
-               
+
                //Instructor THead & TFoot
                if($orderBy == 'instructor') {
                   $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=instructorDesc'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
@@ -633,7 +633,7 @@ if(!class_exists('LIR')) {
             foreach($class as $x => $y) {
                $_POST[$x] = $y;
             }
-            
+
             //Permission checking.
             if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
                array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
@@ -690,7 +690,6 @@ if(!class_exists('LIR')) {
                }
 
                echo '<p>Last Query: '.$wpdb->last_query.'</p>';
-
                echo '</div>';
             }
 
@@ -711,7 +710,9 @@ if(!class_exists('LIR')) {
                echo '<div id="message" class="error">
                   <p><strong>';
 
-                  foreach($error as $e) echo $e.'<br />';
+                  foreach($error as $e) {
+                     echo $e.'<br />'; 
+                  }
 
                   echo '</strong></p>
                </div>';
@@ -1012,14 +1013,14 @@ if(!class_exists('LIR')) {
          if(!current_user_can('edit_posts')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
-         
+
          global $wpdb;
          $this->init($wpdb);
 
          ?>
          <div class="wrap">
             <h2>Reports</h2>
-            
+
             <?php
             //Debugging
             if($this->options['debug'] && !empty($_POST)) {
@@ -1058,7 +1059,7 @@ if(!class_exists('LIR')) {
                          <label><input type="radio" name="option" value="report" /> Display Report</label></td>
                   </tr>
                </table>
-               
+
                <p class="submit">
                   <input type="hidden" name="action" value="LIR_download_report" />
                   <input type="submit" name="submit" class="button-primary" value="Gimme That Report!" />&nbsp;&nbsp;
@@ -1074,8 +1075,8 @@ if(!class_exists('LIR')) {
          </div>
          <?php
       }
-      
-      
+
+
       /*
          Function: generateReport
             Creates and sends CSV file to user.
@@ -1093,12 +1094,12 @@ if(!class_exists('LIR')) {
                    u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->prefix.'users u ON p.owner_id = u.ID
                    JOIN '.$wpdb->prefix.'users u2 ON p.last_updated_by = u2.ID';
          $array = array();
-         
+
          //Check if additional parameters have been given.
          if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
             //Prepare the query with WHERE statement.
             $query .= ' WHERE';
-            
+
             if(!empty($_POST['librarian_name'])) {
                $query .= ' librarian_name = %s AND';
                array_push($array, $_POST['librarian_name']);
@@ -1116,17 +1117,17 @@ if(!class_exists('LIR')) {
                array_push($array, $date.' 23:59:59');
                $fileName .= ' ending '.$date;
             }
-            
+
             //Remove trailing AND from query.
             $query = substr($query, 0, -4);
-            
+
             //Prepare query.
             $query = $wpdb->prepare($query, $array);
          }
          else {
             $fileName .= ' all';
          }
-         
+
          $fileName .= '.csv';
          $query .= ' ORDER BY class_start, class_end';
          $result = $wpdb->get_results($query, ARRAY_A);
@@ -1135,17 +1136,17 @@ if(!class_exists('LIR')) {
          if($result && $fileOutput) {
             $f = fopen('php://output', 'w');
             fputcsv($f, $column);
-            
+
             foreach($result as $line) {
                fputcsv($f, $line);
             }
-            
+
             //Send the proper header information for a CSV file.
             header("Content-type: text/csv");
             header("Content-Disposition: attachment; filename=".$fileName);
             header("Pragma: no-cache");
             header("Expires: 0");
-            
+
             fseek($f, 0);
             fpassthru($f);
             fclose($f);
@@ -1168,11 +1169,11 @@ if(!class_exists('LIR')) {
                   <?php
                   foreach($result as $line) {
                      echo '<tr>';
-                     
+
                      foreach($line as $l) {
                         echo '<td>'.$l.'</td>';
                      }
-                     
+
                      echo '</tr>';
                   }
                   ?>
