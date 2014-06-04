@@ -42,6 +42,7 @@ if(!class_exists('LIR')) {
       const VERSION = '0.2.0';
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
+      const TABLE_FLAGS = '_flags';
       private $options;
       private $table;
 
@@ -63,7 +64,6 @@ if(!class_exists('LIR')) {
          add_action('admin_post_LIRDL', array(&$this, 'generateReport'));
          //add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'generateReport'));
          //add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
-
       }
 
 
@@ -84,8 +84,9 @@ if(!class_exists('LIR')) {
 
          //Prep table names.
          $this->table = array(
-            'posts'  =>  $wpdb->prefix.self::SLUG.self::TABLE_POSTS,
-            'meta'   =>  $wpdb->prefix.self::SLUG.self::TABLE_META
+            'posts'   =>   $wpdb->prefix.self::SLUG.self::TABLE_POSTS,
+            'meta'    =>   $wpdb->prefix.self::SLUG.self::TABLE_META,
+            'flags'   =>   $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
          );
       }
 
@@ -93,7 +94,7 @@ if(!class_exists('LIR')) {
       /*
          Function: activationHook
             Checks to make sure WordPress is compatible, sets up tables, and sets up options.
-            **STATIC FUNCTION**
+            ***STATIC FUNCTION***
       */
       public static function activationHook() {
          if(!current_user_can('manage_options')) {
@@ -107,10 +108,10 @@ if(!class_exists('LIR')) {
          }
 
          //Create default options for wp_options if they don't already exist.
-         $options = array('debug'    =>  false,
-                          'version'  =>  self::VERSION,
-                          'name'     =>  self::NAME,
-                          'slug'     =>  self::SLUG);
+         $options = array('debug'     =>   false,
+                          'version'   =>   self::VERSION,
+                          'name'      =>   self::NAME,
+                          'slug'      =>   self::SLUG);
 
          add_option(self::OPTIONS, $options, '', 'no');
          $options = get_option(self::OPTIONS);
@@ -124,39 +125,49 @@ if(!class_exists('LIR')) {
 
          //Post table.
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS." (
-                     id mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
-                     librarian_name varchar(255) NOT NULL,
-                     librarian2_name varchar(255) DEFAULT NULL,
-                     instructor_name varchar(255) NOT NULL,
-                     instructor_email varchar(255) DEFAULT NULL,
-                     instructor_phone varchar(255) DEFAULT NULL,
-                     class_start datetime NOT NULL,
-                     class_end datetime NOT NULL,
-                     class_location varchar(255) NOT NULL,
-                     class_type varchar(255) NOT NULL,
-                     audience varchar(255) NOT NULL,
-                     class_description mediumtext,
-                     department_group varchar(255) NOT NULL,
-                     course_number varchar(255) DEFAULT NULL,
-                     bool1 tinyint(1) NOT NULL DEFAULT '0',
-                     bool2 tinyint(1) NOT NULL DEFAULT '0',
-                     bool3 tinyint(1) NOT NULL DEFAULT '0',
-                     attendance smallint(6) UNSIGNED DEFAULT NULL,
-                     owner_id bigint(20) NOT NULL,
-                     last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                     last_updated_by bigint(20) NOT NULL,
-                     PRIMARY KEY  (id)
-                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+                      id mediumint(8) UNSIGNED NOT NULL AUTO_INCREMENT,
+                      librarian_name varchar(255) NOT NULL,
+                      librarian2_name varchar(255) DEFAULT NULL,
+                      instructor_name varchar(255) NOT NULL,
+                      instructor_email varchar(255) DEFAULT NULL,
+                      instructor_phone varchar(255) DEFAULT NULL,
+                      class_start datetime NOT NULL,
+                      class_end datetime NOT NULL,
+                      class_location varchar(255) NOT NULL,
+                      class_type varchar(255) NOT NULL,
+                      audience varchar(255) NOT NULL,
+                      class_description mediumtext,
+                      department_group varchar(255) NOT NULL,
+                      course_number varchar(255) DEFAULT NULL,
+                      attendance smallint(6) UNSIGNED DEFAULT NULL,
+                      owner_id bigint(20) NOT NULL,
+                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                      last_updated_by bigint(20) NOT NULL,
+                      PRIMARY KEY (id)
+                   ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
          dbDelta($query);
 
          //Meta table.
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_META." (
-                     field varchar(255) NOT NULL,
-                     value mediumtext NOT NULL,
-                     PRIMARY KEY  (field)
-                  ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+                      field varchar(255) NOT NULL,
+                      value mediumtext NOT NULL,
+                      PRIMARY KEY (field)
+                   ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
 
+         dbDelta($query);
+         
+         //Flag table.
+         $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS." (
+			             posts_id mediumint(8) UNSIGNED NOT NULL,
+							 name varchar(255) NOT NULL,
+							 value smallint(1) NOT NULL,
+							 PRIMARY KEY (posts_id, name),
+							 FOREIGN KEY (posts_id) 
+							    REFERENCES ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS." (id)
+								 ON UPDATE CASCADE ON DELETE CASCADE
+						 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+         
          dbDelta($query);
       }
 
@@ -164,19 +175,20 @@ if(!class_exists('LIR')) {
       /*
          Function: deactivationHook
             Currently used for testing purposes only.
-            **STATIC FUNCTION**
+            ***STATIC FUNCTION***
       */
       public static function deactivationHook() {
          if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
+         //*
          //Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
 
          //Remove custom database tables (post & meta).
          global $wpdb;
-         $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.'_posts'.", ".$wpdb->prefix.self::SLUG.'_meta');
+         $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS.", ".$wpdb->prefix.self::SLUG.self::TABLE_META.", ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS);
          //*/
       }
 
@@ -184,7 +196,7 @@ if(!class_exists('LIR')) {
       /*
          Function: uninstallHook
             Used to cleanup items after uninstalling the plugin (databases, wp_options, &c).
-            **STATIC FUNCTION**
+            ***STATIC FUNCTION***
       */
       public static function uninstallHook() {
          if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN')) {
@@ -196,7 +208,7 @@ if(!class_exists('LIR')) {
 
          //Remove custom database tables (post & meta).
          global $wpdb;
-         $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS.", ".$wpdb->prefix.self::SLUG.self::TABLE_META);
+         $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS.", ".$wpdb->prefix.self::SLUG.self::TABLE_META.", ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS);
       }
 
 

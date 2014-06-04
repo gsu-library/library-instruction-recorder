@@ -51,6 +51,11 @@ Initial release so why not install?
 == Changelog ==
 
 = 0.3.0 =
+Week of 6/2/2014, MB
+
+* Added flags table to replace bool values in posts table, altered posts table to remove bool values, and updated code to be compatible with these changes.
+* Key references added to database tables.
+
 Week of 5/26/2014, MB
 
 * Fixed a permission error with non-admins adding a class (check in wrong place).
