@@ -55,6 +55,7 @@ Week of 6/2/2014, MB
 
 * Added flags table to replace bool values in posts table, altered posts table to remove bool values, and updated code to be compatible with these changes.
 * Key references added to database tables.
+* AddUpdateClass can return a 0 (0 rows updated on an equivalent update query) so check for result === false for error.
 
 Week of 5/26/2014, MB
 

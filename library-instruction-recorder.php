@@ -159,14 +159,14 @@ if(!class_exists('LIR')) {
          
          //Flag table.
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS." (
-			             posts_id mediumint(8) UNSIGNED NOT NULL,
-							 name varchar(255) NOT NULL,
-							 value smallint(1) NOT NULL,
-							 PRIMARY KEY (posts_id, name),
-							 FOREIGN KEY (posts_id) 
-							    REFERENCES ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS." (id)
-								 ON UPDATE CASCADE ON DELETE CASCADE
-						 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+                      posts_id mediumint(8) UNSIGNED NOT NULL,
+                      name varchar(255) NOT NULL,
+                      value smallint(1) NOT NULL,
+                      PRIMARY KEY (posts_id, name),
+                      FOREIGN KEY (posts_id) 
+                         REFERENCES ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS." (id)
+                         ON UPDATE CASCADE ON DELETE CASCADE
+                   ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
          
          dbDelta($query);
       }
@@ -674,8 +674,8 @@ if(!class_exists('LIR')) {
             //Go to function to insert data into database.
             if(empty($error)) { $classAdded = $this->addUpdateClass($_POST['edit']); }
             //If database insert failed, push error.
-            if(!$classAdded && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
-            else if(!$classAdded && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
+            if(($classAdded === false) && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
+            else if(($classAdded === false) && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
          }
 
          ?>
@@ -990,14 +990,10 @@ if(!class_exists('LIR')) {
 
          //Only mess with owner_id if new submission.
          if(!$id) { $data['owner_id'] = $current_user->id; }
-
-         //$data['class_start'] = date('Y-m-d', strtotime($_POST['class_date'])).' '.$_POST['class_time'];
+			
          $data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
          $data['class_end'] = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
-         $data['bool1'] = isset($_POST['bool1']) ? 1 : 0;
-         $data['bool2'] = isset($_POST['bool2']) ? 1 : 0;
-         $data['bool3'] = isset($_POST['bool3']) ? 1 : 0;
-
+			
          if(!empty($_POST['librarian2_name']))     { $data['librarian2_name'] = $_POST['librarian2_name']; }
          if(!empty($_POST['instructor_email']))    { $data['instructor_email'] = $_POST['instructor_email']; }
          if(!empty($_POST['instructor_phone']))    { $data['instructor_phone'] = $_POST['instructor_phone']; }
@@ -1005,10 +1001,39 @@ if(!class_exists('LIR')) {
          if(!empty($_POST['course_number']))       { $data['course_number'] = $_POST['course_number']; }
          if(!empty($_POST['attendance']))          { $data['attendance'] = $_POST['attendance']; }
 
-         if($id)   { $success = $wpdb->update($this->table['posts'], $data, array('id' => $id)); }
-         else      { $success = $wpdb->insert($this->table['posts'], $data); }
+         //Submit update query.
+         if($id) { 
+            $success = $wpdb->update($this->table['posts'], $data, array('id' => $id));
+         }
+         //Submit insert query.
+         else {
+            $success = $wpdb->insert($this->table['posts'], $data);
+            $insertID = $wpdb->insert_id; //Added this to remove the possibility of conflicts from other queries.
+         }
+         
+         
+         /*
+            Insert and update cannot handle NULL values so perform a manual update to remedy this (if needed).
+				Only perform this operation if the insert or update above succeeded.
+         */
+         if(($success !== false) && (empty($_POST['librarian2_name']) || empty($_POST['instructor_email']) || empty($_POST['instructor_phone']) || empty($_POST['class_description']) || empty($_POST['course_number']) || empty($_POST['attendance']))) {
+            $query = 'UPDATE '.$this->table['posts'].' SET ';
+            
+            if(empty($_POST['librarian2_name']))     { $query .= 'librarian2_name = NULL, '; }
+            if(empty($_POST['instructor_email']))    { $query .= 'instructor_email = NULL, '; }
+            if(empty($_POST['instructor_phone']))    { $query .= 'instructor_phone = NULL, '; }
+            if(empty($_POST['class_description']))   { $query .= 'class_description = NULL, '; }
+            if(empty($_POST['course_number']))       { $query .= 'course_number = NULL, '; }
+            if(empty($_POST['attendance']))          { $query .= 'attendance = NULL, '; }
+            
+            $query = substr($query, 0, -2);
+            $query .= ' WHERE id = ';
+            $query .= $id ? $id : $insertID;
+				$temp = $wpdb->query($query);
+         }
+         
 
-         if($success && !$id)   { return $wpdb->insert_id; } //Returns auto increment number on successful insertion.
+         if($success && !$id)   { return $insertID; } //Returns auto increment number on successful insertion.
          else if($success)      { return $success; } //Returns number of rows updated on successful update.
          else                   { return false; } //Returns false if either update or insert failed.
       }
@@ -1216,7 +1241,7 @@ if(!class_exists('LIR')) {
          $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
          $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
          $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
-         $bools = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'bool_info'"));
+         $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'flag_info'"));
 
 
          /*
@@ -1335,23 +1360,16 @@ if(!class_exists('LIR')) {
                   }
                }
             }
-            //Adds bool options to the database.
-            else if(!empty($_POST['boolSave'])) {
-               if(empty($bools)) $insert = true; else $insert = false;
+            //Adds flag options to the database.
+            else if(!empty($_POST['flagSave'])) {
+					$flags = array(); //Don't want leftovers...
+					
+					//Need a better way to do this! *******************************
+               if(!empty($_POST['flagName1'])) { $flags[$_POST['flagName1']] = $_POST['flagEnabled1']; }
+               if(!empty($_POST['flagName2'])) { $flags[$_POST['flagName2']] = $_POST['flagEnabled2']; }
+               if(!empty($_POST['flagName3'])) { $flags[$_POST['flagName3']] = $_POST['flagEnabled3']; }
 
-               $bools['bool1Value'] = $_POST['bool1Value'];
-               $bools['bool1Enabled'] = $_POST['bool1Enabled'];
-               $bools['bool2Value'] = $_POST['bool2Value'];
-               $bools['bool2Enabled'] = $_POST['bool2Enabled'];
-               $bools['bool3Value'] = $_POST['bool3Value'];
-               $bools['bool3Enabled'] = $_POST['bool3Enabled'];
-
-               if($insert) {
-                  $wpdb->insert($this->table['meta'], array('field' => 'bool_info', 'value' => serialize($bools)));
-               }
-               else {
-                  $wpdb->update($this->table['meta'], array('value' => serialize($bools)), array('field' => 'bool_info'));
-               }
+               $wpdb->replace($this->table['meta'], array('field' => 'flag_info', 'value' => serialize($flags)));
             }
          }
          /*
@@ -1446,23 +1464,24 @@ if(!class_exists('LIR')) {
             </form>
 
             <form action="" method="post">
-               <h3>Bools</h3>
-               <h4>Bool 1</h4>
-               <p><label>Name: <input type="text" name="bool1Value" value="<?= $bools['bool1Value']; ?>" /></label>
-               <label>Enabled <input type="radio" name="bool1Enabled" value="1" <?php if($bools['bool1Enabled']) { echo 'checked="checked "'; } ?> /></label>
-               <label>Disabled <input type="radio" name="bool1Enabled" value="0" <?php if(!$bools['bool1Enabled']) { echo 'checked="checked "'; } ?> /></p></label>
+               <h3>Flags</h3>
+               
+               <?php
+					$i = 1;
+					foreach($flags as $name => $value) {
+						echo '<p><label>Name: <input type="text" name="flagName'.$i.'" value="'.$name.'" /></label>
+						      <label>Enabled <input type="radio" name="flagEnabled'.$i.'" value="1" '; if($value) { echo 'checked="checked"'; } echo' /></label>
+								<label>Disabled <input type="radio" name="flagEnabled'.$i.'" value="0" '; if(!$value) { echo 'checked="checked"'; } echo' /></label></p>';
+						
+						$i++;
+					}
+					?>
+               
+               <p><label>Name: <input type="text" name="flagName<?= $i; ?>" /></label>
+               <label>Enabled <input type="radio" name="flagEnabled<?= $i; ?>" value="1" /></label>
+               <label>Disabled <input type="radio" name="flagEnabled<?= $i; ?>" value="0" /></label></p>
 
-               <h4>Bool 2</h4>
-               <p><label>Name: <input type="text" name="bool2Value" value="<?= $bools['bool2Value']; ?>" /></label>
-               <label>Enabled <input type="radio" name="bool2Enabled" value="1" <?php if($bools['bool2Enabled']) { echo 'checked="checked "'; } ?> /></label>
-               <label>Disabled <input type="radio" name="bool2Enabled" value="0" <?php if(!$bools['bool2Enabled']) { echo 'checked="checked "'; } ?> /></p></label>
-
-               <h4>Bool 3</h4>
-               <p><label>Name: <input type="text" name="bool3Value" value="<?= $bools['bool3Value']; ?>" /></label>
-               <label>Enabled <input type="radio" name="bool3Enabled" value="1" <?php if($bools['bool3Enabled']) { echo 'checked="checked "'; } ?> /></label>
-               <label>Disabled <input type="radio" name="bool3Enabled" value="0" <?php if(!$bools['bool3Enabled']) { echo 'checked="checked "'; } ?> /></p></label>
-
-               <input name="boolSave" type="submit" class="button-secondary" value="Save Bools" />
+               <input name="flagSave" type="submit" class="button-secondary" value="Save Flags" />
                <?php wp_nonce_field(self::SLUG.'_fields', self::SLUG.'_nonce'); ?>
             </form>
          </div>
