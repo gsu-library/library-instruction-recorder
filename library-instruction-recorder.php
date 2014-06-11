@@ -947,17 +947,20 @@ if(!class_exists('LIR')) {
                   /*
                      Flags.
                   */
-                  if(!$classAdded && isset($_GET['edit'])) {
+                  //If is a non-submitted edit.
+                  if(($classAdded === NULL) && isset($_GET['edit'])) {
                      $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->table['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
                   }
-                  else {
+                  //Else if is a new entry or after a successful submission.
+                  else if(($classAdded === NULL) || $classAdded) {
                      $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'flag_info'"));
                   }
+                  //Else if it is a failed submission we will look at the POST variables.
 
                   $i = 1;
 
-                  //For edits only.
-                  if(!$classAdded && isset($_GET['edit'])) {
+                  //Non-submitted edits.
+                  if(($classAdded === NULL) && isset($_GET['edit'])) {
                      foreach($flags as $f) {
                         echo '<tr><th>'.$f->name.'</th>';
                         echo '<td><input type="checkbox" name="flagValue'.$i.'" ';
@@ -971,15 +974,29 @@ if(!class_exists('LIR')) {
                         $i++;
                      }
                   }
-                  //Need something for failed submission.
-                  //For new classes.
-                  else {
+                  //For new entries and after successful submissions.
+                  else if(($classAdded === NULL) || $classAdded) {
                      foreach($flags as $name => $isEnabled) {
                         if($isEnabled) {
                            echo '<tr><th>'.$name.'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$i.'" />';
                            echo '<input type="hidden" name="flagName'.$i.'" value="'.$name.'" /></td></tr>';
                            $i++;
+                        }
+                     }
+                  }
+                  //For failed submissions (edit or new).
+                  //This could potentially be manipulated by fake POST data.
+                  else if($classAdded === false) {
+                     $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
+
+                     foreach($flagNames as $name) {
+                        $d = substr($name, -1, 1);
+
+                        if(!empty($_POST[$name])) {
+                           echo '<tr><th>'.$name.'</th>';
+                           echo '<td><input type="checkbox" name="flagValue'.$d.'"'; if($_POST['flagValue'.$d] == 'on') { echo ' checked="checked"'; } echo ' />';
+                           echo '<input type="hidden" name="flagName'.$d.'" value="'.$name.'" /></td></tr>';
                         }
                      }
                   }
