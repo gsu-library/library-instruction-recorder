@@ -1438,11 +1438,17 @@ if(!class_exists('LIR')) {
             //Adds flag options to the database.
             else if(!empty($_POST['flagSave'])) {
                $flags = array(); //Don't want leftovers...
+               $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
 
-               //Need a better way to do this! *******************************
-               if(!empty($_POST['flagName1'])) { $flags[$_POST['flagName1']] = $_POST['flagEnabled1']; }
-               if(!empty($_POST['flagName2'])) { $flags[$_POST['flagName2']] = $_POST['flagEnabled2']; }
-               if(!empty($_POST['flagName3'])) { $flags[$_POST['flagName3']] = $_POST['flagEnabled3']; }
+               foreach($flagNames as $name) {
+                  $i = substr($name, -1, 1); //Which flag number are we dealing with?
+
+                  //Make sure flagName POST var exists.
+                  if(!empty($_POST[$name])) {
+                     $flags[$_POST[$name]] = $_POST['flagEnabled'.$i];
+                  }
+               }
+
 
                $wpdb->replace($this->table['meta'], array('field' => 'flag_info', 'value' => serialize($flags)));
             }
