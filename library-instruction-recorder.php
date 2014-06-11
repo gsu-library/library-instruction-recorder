@@ -642,6 +642,7 @@ if(!class_exists('LIR')) {
          if($_GET['edit'] && !$_POST['edit']) {
             $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $_GET['edit']));
 
+            //Save DB to POST so fields can be populated from same pool during editing and failed submissions.
             foreach($class as $x => $y) {
                $_POST[$x] = $y;
             }
@@ -658,7 +659,7 @@ if(!class_exists('LIR')) {
             Submission handling.
          */
          if(isset($_POST['submitted']) && ($debug['nonce verified'] = wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_add_class'))) {
-            $classAdded = false;
+            $classAdded = false; //Needed.
 
             //Check to make sure all required fields have been submitted.
             if(empty($_POST['librarian_name']))     { array_push($error, 'Missing Field: Primary Librarian'); }
@@ -673,12 +674,14 @@ if(!class_exists('LIR')) {
 
             //Go to function to insert data into database.
             if(empty($error)) { $classAdded = $this->addUpdateClass($_POST['edit']); }
-            //If database insert failed, push error.
-            if(($classAdded === false) && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
-            else if(($classAdded === false) && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
+            if($classAdded === 0) { $classAdded = true; } //This will make things easier from here on down.
+            //If update fails with no other errors.
+            if(!$classAdded && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
+            //If insert fails with no other errors.
+            else if(!$classAdded && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
          }
-
          ?>
+
          <div class="wrap">
             <h2><?= ($_GET['edit']) ? 'Edit' : 'Add'; ?> a Class</h2>
 
@@ -716,7 +719,7 @@ if(!class_exists('LIR')) {
                </div>';
             }
             //Message if class was updated.
-            else if($classAdded !== false && $_POST['edit']) {
+            else if($classAdded && $_POST['edit']) {
                echo '<div id="message" class="updated">
                   <p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
                </div>';
@@ -733,13 +736,14 @@ if(!class_exists('LIR')) {
                   echo '</strong></p>
                </div>';
             }
-
             ?>
+
             <form action="" method="post">
                <table class="form-table">
                   <tr>
                      <th>*Primary Librarian</th>
                      <td><select name="librarian_name"><option value=""></option>
+
                      <?php
                      $user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->prefix."users ORDER BY display_name");
 
@@ -747,21 +751,25 @@ if(!class_exists('LIR')) {
                         if($u->display_name == "admin") { continue; }
                         echo '<option value="'.$u->display_name.'"';
 
-                        if(!$classAdded && ($u->display_name == $_POST['librarian_name'])) {
+                        //If there was a submission error display submitted name display submitted user.
+                        if((($classAdded === false) && ($u->display_name == $_POST['librarian_name']))) {
                            echo ' selected="selected"';
                         }
-                        else if(($classAdded || !isset($_POST['librarian_name'])) && $u->display_name == $user_identity) {
+                        //If nothing has been submitted yet or there has been a successful submission select current user.
+                        else if(($classAdded || ($classAdded === NULL)) && ($u->display_name == $user_identity)) {
                            echo ' selected="selected"';
                         }
 
                         echo '>'.$u->display_name.'</option>';
                      }
                      ?>
+
                      </select></td>
                   </tr>
                   <tr>
                      <th>Secondary Librarian</th>
                      <td><select name="librarian2_name"><option value=""></option>
+
                      <?php
                      foreach($user as $u) {
                         if($u->display_name == "admin") { continue; }
@@ -770,9 +778,11 @@ if(!class_exists('LIR')) {
                            echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
                         }
                         else {
-                           echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';                     }
+                           echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';
                         }
+                     }
                      ?>
+
                      </select></td>
                   </tr>
                   <tr>
@@ -794,20 +804,22 @@ if(!class_exists('LIR')) {
                   <tr>
                      <th>*Department/Group</th>
                      <td><select name="department_group">
-                        <option value="">&nbsp;</option>
-                        <?php
-                        $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
+                         <option value="">&nbsp;</option>
 
-                        foreach($departmentGroup as $x) {
-                           if((esc_attr($x) == $_POST['department_group']) && !$classAdded) {
-                              echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
-                           }
-                           else {
-                              echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
-                           }
-                        }
-                        ?>
-                     </select></td>
+                         <?php
+                         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
+
+                         foreach($departmentGroup as $x) {
+                            if(!$classAdded && (esc_attr($x) == $_POST['department_group'])) {
+                               echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
+                            }
+                            else {
+                               echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+                            }
+                         }
+                         ?>
+
+                         </select></td>
                   </tr>
                   <tr>
                      <th>Course Number</th>
@@ -816,6 +828,7 @@ if(!class_exists('LIR')) {
                   <tr>
                      <th>*Class Date (M/D/YYYY)</th>
                      <td>
+
                      <?php
                      echo '<input type="text" id="classDate" name="class_date" value="';
 
@@ -831,10 +844,12 @@ if(!class_exists('LIR')) {
 
                      echo '" />';
                      ?>
+
                      </td>
                   </tr>
                   <tr>
                      <th>*Class Time (H:MM AM|PM)</th>
+
                      <?php
                      if(!$classAdded && !empty($_POST['class_time'])) {
                         $time = date('g:i A', strtotime($_POST['class_time']));
@@ -849,6 +864,7 @@ if(!class_exists('LIR')) {
                         $time = date('g:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00').date(' A');
                      }
                      ?>
+
                      <td><input type="text" name="class_time" value="<?= $time; ?>" /> <label>*Length</label>
                         <select name="class_length">
                            <option value="0">&nbsp;</option>
@@ -866,26 +882,29 @@ if(!class_exists('LIR')) {
                   <tr>
                      <th>*Class Location</th>
                      <td><select name="class_location">
-                        <option value="">&nbsp;</option>
-                        <?php
-                        $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
+                         <option value="">&nbsp;</option>
 
-                        foreach($classLocation as $x) {
-                           echo '<option value="'.esc_attr($x).'"';
+                         <?php
+                         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
 
-                           if(!$classAdded && $_POST['class_location'] == esc_attr($x)) {
-                              echo ' selected="selected"';
-                           }
+                         foreach($classLocation as $x) {
+                            echo '<option value="'.esc_attr($x).'"';
 
-                           echo '>'.$x.'</option>';
-                        }
-                        ?>
-                     </select></td>
+                            if(!$classAdded && $_POST['class_location'] == esc_attr($x)) {
+                               echo ' selected="selected"';
+                            }
+
+                            echo '>'.$x.'</option>';
+                         }
+                         ?>
+
+                         </select></td>
                   </tr>
                   <tr>
                      <th>*Class Type</th>
                      <td><select name="class_type">
                         <option value="">&nbsp;</option>
+
                         <?php
                         $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
 
@@ -899,12 +918,14 @@ if(!class_exists('LIR')) {
                            echo '>'.$x.'</option>';
                         }
                         ?>
+
                      </select></td>
                   </tr>
                   <tr>
                      <th>*Audience</th>
                      <td><select name="audience">
                         <option value="">&nbsp;</option>
+
                         <?php
                         $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
 
@@ -918,27 +939,55 @@ if(!class_exists('LIR')) {
                            echo '>'.$x.'</option>';
                         }
                         ?>
+
                      </select></td>
                   </tr>
 
                   <?php
-                  $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'flag_info'"));
+                  /*
+                     Flags.
+                  */
+                  if(!$classAdded && isset($_GET['edit'])) {
+                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->table['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
+                  }
+                  else {
+                     $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'flag_info'"));
+                  }
+
                   $i = 1;
 
-                  foreach($flags as $name => $isEnabled) {
-                     if($isEnabled) {
-                        echo '<tr><th>'.$name.'</th>';
-                        echo '<td><input type="checkbox" name="flagValue'.$i.'" />
-                              <input type="hidden" name="flagName'.$i.'" value="'.$name.'" /></td></tr>';
+                  //For edits only.
+                  if(!$classAdded && isset($_GET['edit'])) {
+                     foreach($flags as $f) {
+                        echo '<tr><th>'.$f->name.'</th>';
+                        echo '<td><input type="checkbox" name="flagValue'.$i.'" ';
 
+                        if($f->value) {
+                           echo 'checked="checked"';
+                        }
+
+                        echo ' />';
+                        echo '<input type="hidden" name="flagName'.$i.'" value="'.$f->name.'" /></td></tr>';
                         $i++;
+                     }
+                  }
+                  //Need something for failed submission.
+                  //For new classes.
+                  else {
+                     foreach($flags as $name => $isEnabled) {
+                        if($isEnabled) {
+                           echo '<tr><th>'.$name.'</th>';
+                           echo '<td><input type="checkbox" name="flagValue'.$i.'" />';
+                           echo '<input type="hidden" name="flagName'.$i.'" value="'.$name.'" /></td></tr>';
+                           $i++;
+                        }
                      }
                   }
                   ?>
 
                   <tr>
                      <th>Number of Students Attended</th>
-                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance']) && $_POST['attendance'] != NULL) echo $_POST['attendance']; ?>" /></td>
+                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
                   </tr>
                </table>
 
