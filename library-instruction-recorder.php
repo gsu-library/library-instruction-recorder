@@ -1202,7 +1202,7 @@ if(!class_exists('LIR')) {
          $fileName = $this->options['slug'];
          $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
                    class_start, class_end, class_location, class_type, audience, class_description, department_group,
-                   course_number, bool1, bool2, bool3, attendance, u.display_name as owner, last_updated,
+                   course_number, attendance, u.display_name as owner, last_updated,
                    u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->prefix.'users u ON p.owner_id = u.ID
                    JOIN '.$wpdb->prefix.'users u2 ON p.last_updated_by = u2.ID';
          $array = array();
@@ -1244,6 +1244,21 @@ if(!class_exists('LIR')) {
          $query .= ' ORDER BY class_start, class_end';
          $result = $wpdb->get_results($query, ARRAY_A);
          $column = $wpdb->get_col_info('name');
+         array_push($column, 'flags'); //Manually add flags column.
+
+         //Add flags to each record.
+         foreach($result as $i => $v) {
+            $flags = $wpdb->get_results('SELECT name, value FROM '.$this->table['flags'].' WHERE posts_id = '.$v['id'], ARRAY_A);
+
+            //Put values in a temp array to be imploded later.
+            $tempA = array();
+            foreach($flags as $f) {
+               $tempS = $f['value'] ? 'yes' : 'no';
+               array_push($tempA, $f['name'].' = '.$tempS);
+            }
+
+            array_push($result[$i], implode(', ', $tempA)); //Boom
+         }
 
          if($result && $fileOutput) {
             $f = fopen('php://output', 'w');
