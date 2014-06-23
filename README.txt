@@ -51,9 +51,13 @@ Initial release so why not install?
 == Changelog ==
 
 = 0.3.0 =
+Week of 6/23/2014, MB
+
+* Added flags to reports.
+
 Week of 6/9/2014, MB
 
-
+* Oops, lost this and the next weeks.
 
 Week of 6/2/2014, MB
 
