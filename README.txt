@@ -54,6 +54,7 @@ Initial release so why not install?
 Week of 6/23/2014, MB
 
 * Added flags to reports.
+* Added flags back into details option on class listing page.
 
 Week of 6/9/2014, MB
 
