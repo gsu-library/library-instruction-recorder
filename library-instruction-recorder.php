@@ -534,7 +534,7 @@ if(!class_exists('LIR')) {
                   //Flags.
                   $flags = $wpdb->get_results('SELECT name, value FROM '.$this->table['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
                   foreach($flags as $f) {
-                     echo '<td name="'.str_replace(array(' ', '/'), array('_', '-'), $f['name']).'" class="LIR-hide">';
+                     echo '<td name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'" class="LIR-hide">';
                      echo $f['value'] ? 'yes' : 'no';
                      echo '</td>';
                   }
