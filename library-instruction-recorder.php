@@ -1039,13 +1039,13 @@ if(!class_exists('LIR')) {
          get_currentuserinfo();
 
          $data = array(
-            'librarian_name'     =>   $_POST['librarian_name'],
-            'instructor_name'    =>   $_POST['instructor_name'],
-            'class_location'     =>   $_POST['class_location'],
-            'class_type'         =>   $_POST['class_type'],
-            'audience'           =>   $_POST['audience'],
-            'department_group'   =>   $_POST['department_group'],
-            'last_updated_by'    =>   $current_user->id,
+            'librarian_name'   => $_POST['librarian_name'],
+            'instructor_name'  => $_POST['instructor_name'],
+            'class_location'   => $_POST['class_location'],
+            'class_type'       => $_POST['class_type'],
+            'audience'         => $_POST['audience'],
+            'department_group' => $_POST['department_group'],
+            'last_updated_by'  => $current_user->id,
          );
 
          //Only mess with owner_id if new submission (for now).
@@ -1054,12 +1054,12 @@ if(!class_exists('LIR')) {
          $data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
          $data['class_end'] = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
 
-         if(!empty($_POST['librarian2_name']))     { $data['librarian2_name'] = $_POST['librarian2_name']; }
-         if(!empty($_POST['instructor_email']))    { $data['instructor_email'] = $_POST['instructor_email']; }
-         if(!empty($_POST['instructor_phone']))    { $data['instructor_phone'] = $_POST['instructor_phone']; }
-         if(!empty($_POST['class_description']))   { $data['class_description'] = $_POST['class_description']; }
-         if(!empty($_POST['course_number']))       { $data['course_number'] = $_POST['course_number']; }
-         if(!empty($_POST['attendance']))          { $data['attendance'] = $_POST['attendance']; }
+         if(!empty($_POST['librarian2_name']))   { $data['librarian2_name'] = $_POST['librarian2_name']; }
+         if(!empty($_POST['instructor_email']))  { $data['instructor_email'] = $_POST['instructor_email']; }
+         if(!empty($_POST['instructor_phone']))  { $data['instructor_phone'] = $_POST['instructor_phone']; }
+         if(!empty($_POST['class_description'])) { $data['class_description'] = $_POST['class_description']; }
+         if(!empty($_POST['course_number']))     { $data['course_number'] = $_POST['course_number']; }
+         if(!empty($_POST['attendance']))        { $data['attendance'] = $_POST['attendance']; }
 
          //Submit update query.
          if($id) {
@@ -1080,12 +1080,12 @@ if(!class_exists('LIR')) {
          if(($success !== false) && (empty($_POST['librarian2_name']) || empty($_POST['instructor_email']) || empty($_POST['instructor_phone']) || empty($_POST['class_description']) || empty($_POST['course_number']) || empty($_POST['attendance']))) {
             $query = 'UPDATE '.$this->table['posts'].' SET ';
 
-            if(empty($_POST['librarian2_name']))     { $query .= 'librarian2_name = NULL, '; }
-            if(empty($_POST['instructor_email']))    { $query .= 'instructor_email = NULL, '; }
-            if(empty($_POST['instructor_phone']))    { $query .= 'instructor_phone = NULL, '; }
-            if(empty($_POST['class_description']))   { $query .= 'class_description = NULL, '; }
-            if(empty($_POST['course_number']))       { $query .= 'course_number = NULL, '; }
-            if(empty($_POST['attendance']))          { $query .= 'attendance = NULL, '; }
+            if(empty($_POST['librarian2_name']))   { $query .= 'librarian2_name = NULL, '; }
+            if(empty($_POST['instructor_email']))  { $query .= 'instructor_email = NULL, '; }
+            if(empty($_POST['instructor_phone']))  { $query .= 'instructor_phone = NULL, '; }
+            if(empty($_POST['class_description'])) { $query .= 'class_description = NULL, '; }
+            if(empty($_POST['course_number']))     { $query .= 'course_number = NULL, '; }
+            if(empty($_POST['attendance']))        { $query .= 'attendance = NULL, '; }
 
             $query = substr($query, 0, -2);
             $query .= ' WHERE id = '.$id;
