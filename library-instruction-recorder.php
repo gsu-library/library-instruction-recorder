@@ -312,30 +312,30 @@ if(!class_exists('LIR')) {
          //Set default order by if non-default view with no order already selected.
          if(!$orderBy && ($_GET['incomplete'] || $_GET['previous'])) { $orderBy = 'dateDesc'; }
 
-         if($orderBy == 'department')            { $orderQ = 'department_group, course_number, class_start, class_end'; }
-         else if($orderBy == 'departmentDesc')   { $orderQ = 'department_group DESC, course_number, class_start, class_end'; }
-         else if($orderBy == 'course')           { $orderQ = 'course_number, class_start, class_end'; }
-         else if($orderBy == 'courseDesc')       { $orderQ = 'course_number DESC, class_start, class_end'; }
-         else if($orderBy == 'date')             { $orderQ = 'class_start, class_end'; }
-         else if($orderBy == 'dateDesc')         { $orderQ = 'class_start DESC, class_end'; }
-         else if($orderBy == 'librarian')        { $orderQ = 'librarian_name, class_start, class_end'; }
-         else if($orderBy == 'librarianDesc')    { $orderQ = 'librarian_name DESC, class_start, class_end'; }
-         else if($orderBy == 'instructor')       { $orderQ = 'instructor_name, class_start, class_end'; }
-         else if($orderBy == 'instructorDesc')   { $orderQ = 'instructor_name DESC, class_start, class_end'; }
-         else                                    { $orderQ = 'class_start, class_end'; }
+         if($orderBy == 'department')          { $orderQ = 'department_group, course_number, class_start, class_end'; }
+         else if($orderBy == 'departmentDesc') { $orderQ = 'department_group DESC, course_number, class_start, class_end'; }
+         else if($orderBy == 'course')         { $orderQ = 'course_number, class_start, class_end'; }
+         else if($orderBy == 'courseDesc')     { $orderQ = 'course_number DESC, class_start, class_end'; }
+         else if($orderBy == 'date')           { $orderQ = 'class_start, class_end'; }
+         else if($orderBy == 'dateDesc')       { $orderQ = 'class_start DESC, class_end'; }
+         else if($orderBy == 'librarian')      { $orderQ = 'librarian_name, class_start, class_end'; }
+         else if($orderBy == 'librarianDesc')  { $orderQ = 'librarian_name DESC, class_start, class_end'; }
+         else if($orderBy == 'instructor')     { $orderQ = 'instructor_name, class_start, class_end'; }
+         else if($orderBy == 'instructorDesc') { $orderQ = 'instructor_name DESC, class_start, class_end'; }
+         else                                  { $orderQ = 'class_start, class_end'; }
 
 
          /*
             Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
          */
-         $upcoming          =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
-         $upcomingCount     =   $wpdb->num_rows;
-         $incomplete        =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY ".$orderQ);
-         $incompleteCount   =   $wpdb->num_rows;
-         $previous          =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
-         $previousCount     =   $wpdb->num_rows;
-         $myclasses         =   $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
-         $myclassesCount    =   $wpdb->num_rows;
+         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
+         $upcomingCount   = $wpdb->num_rows;
+         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY ".$orderQ);
+         $incompleteCount = $wpdb->num_rows;
+         $previous        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
+         $previousCount   = $wpdb->num_rows;
+         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
+         $myclassesCount  = $wpdb->num_rows;
 
          //Pick list to display and setup for link persistence.
          $mode = '';
@@ -354,9 +354,6 @@ if(!class_exists('LIR')) {
          else {
             $result = $upcoming;
          }
-
-         //Query to get bool names.
-         $boolInfo = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']. " WHERE field = 'bool_info'"));
 
          ?>
          <div class="wrap">
@@ -534,41 +531,11 @@ if(!class_exists('LIR')) {
                      echo '<td name="Instructor_Phone" class="LIR-hide">'.$class->instructor_phone.'</td>';
                   }
 
-                  //Bools for details.
-                  if($boolInfo['bool1Enabled']) {
-                     echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool1Value'])).'" class="LIR-hide">';
-
-                     if($class->bool1) {
-                        echo 'yes';
-                     }
-                     else {
-                        echo 'no';
-                     }
-
-                     echo '</td>';
-                  }
-                  if($boolInfo['bool2Enabled']) {
-                     echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool2Value'])).'" class="LIR-hide">';
-
-                     if($class->bool2) {
-                        echo 'yes';
-                     }
-                     else {
-                        echo 'no';
-                     }
-
-                     echo '</td>';
-                  }
-                  if($boolInfo['bool3Enabled']) {
-                     echo '<td name="'.esc_attr(str_replace(array('"', '/', ' '), array('', '-', '_'), $boolInfo['bool3Value'])).'" class="LIR-hide">';
-
-                     if($class->bool3) {
-                        echo 'yes';
-                     }
-                     else {
-                        echo 'no';
-                     }
-
+                  //Flags.
+                  $flags = $wpdb->get_results('SELECT name, value FROM '.$this->table['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
+                  foreach($flags as $f) {
+                     echo '<td name="'.str_replace(array(' ', '/'), array('_', '-'), $f['name']).'" class="LIR-hide">';
+                     echo $f['value'] ? 'yes' : 'no';
                      echo '</td>';
                   }
 
