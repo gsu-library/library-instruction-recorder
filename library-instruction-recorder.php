@@ -92,7 +92,7 @@ if(!class_exists('LIR')) {
          //Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
          //ALSO, THIS SHOULD START TOMORROW TO PREVENT UNINTENDED SPAM
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime("00:00:01", time()), 'daily', self::SLUG.'_schedule');
+            wp_schedule_event(strtotime("01:00:00", time()), 'daily', self::SLUG.'_schedule');
          }
       }
 
