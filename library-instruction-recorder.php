@@ -61,8 +61,8 @@ if(!class_exists('LIR')) {
          add_action('admin_menu', array(&$this, 'createMenu'));
          add_action('admin_init', array(&$this, 'adminInit'));
          add_action('admin_enqueue_scripts', array(&$this, 'addCssJS'));
-         add_action('admin_post_LIRDL', array(&$this, 'generateReport'));
-         //add_action('admin_post_download_'.self::SLUG.'_report', array(&$this, 'generateReport'));
+         add_action('admin_post_'.self::SLUG.'DL', array(&$this, 'generateReport'));
+         add_action(self::SLUG.'_schedule', array(&$this, 'emailReminders'));
          //add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
       }
 
@@ -84,10 +84,16 @@ if(!class_exists('LIR')) {
 
          //Prep table names.
          $this->table = array(
-            'posts'   =>   $wpdb->prefix.self::SLUG.self::TABLE_POSTS,
-            'meta'    =>   $wpdb->prefix.self::SLUG.self::TABLE_META,
-            'flags'   =>   $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
+            'posts' => $wpdb->prefix.self::SLUG.self::TABLE_POSTS,
+            'meta'  => $wpdb->prefix.self::SLUG.self::TABLE_META,
+            'flags' => $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
          );
+
+         //Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
+         //ALSO, THIS SHOULD START TOMORROW TO PREVENT UNINTENDED SPAM
+         if(!wp_next_scheduled(self::SLUG.'_schedule')) {
+            wp_schedule_event(strtotime("00:01", time()), 'daily', self::SLUG.'_schedule');
+         }
       }
 
 
@@ -182,8 +188,10 @@ if(!class_exists('LIR')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         //*
-         //Remove options saved in wp_options table.
+         //Remove scheduled hook.
+         wp_clear_scheduled_hook(self::SLUG.'_schedule');
+
+         //*Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
 
          //Remove custom database tables (post & meta).
@@ -202,6 +210,9 @@ if(!class_exists('LIR')) {
          if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
+
+         //We'll make sure the scheduled hook has been removed.
+         wp_clear_scheduled_hook(self::SLUG.'_schedule');
 
          //Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
@@ -360,6 +371,16 @@ if(!class_exists('LIR')) {
             <h2><?= $this->options['name']; ?> <a href="<?= $baseUrl.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
 
             <?php
+            /*
+               For debugging.
+            */
+            if($this->options['debug']) {
+               echo '<div id="message" class="error">';
+               echo '<p>'.time().' - '.strtotime('00:01', time()).'</p>';
+               echo '</div>';
+            }
+
+
             /*
                Success or error message for removing a class.
             */
@@ -1019,7 +1040,7 @@ if(!class_exists('LIR')) {
          if(!$id) { $data['owner_id'] = $current_user->id; }
 
          $data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
-         $data['class_end'] = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
+         $data['class_end']   = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
 
          if(!empty($_POST['librarian2_name']))   { $data['librarian2_name'] = $_POST['librarian2_name']; }
          if(!empty($_POST['instructor_email']))  { $data['instructor_email'] = $_POST['instructor_email']; }
@@ -1616,6 +1637,13 @@ if(!class_exists('LIR')) {
          return $input;
       }
 
+
+      /*
+
+      */
+      public function emailReminders() {
+         wp_mail('mbrooks34@gsu.edu', 'Test scheduler email', 'this is a test', array('From: Test Wordpress <nobody@gsu.edu>'));
+      }
 
       /*
          Function: easterEgg
