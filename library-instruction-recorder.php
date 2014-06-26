@@ -1647,8 +1647,27 @@ if(!class_exists('LIR')) {
 
       */
       public function emailReminders() {
+         global $wpdb;
+         $this->init($wpdb);
+
+         $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
+
+         foreach($results as $r) {
+            $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
+
+            $message  = '<p>'.$uInfo->display_name.',</p>';
+            $message .= '<p><a href="#">'.$r->department_group;  //NEED TO PUT THE URL HERE PLEASE
+            $message .= $r->course_number ? ' '.$r->course_number : '';
+            $message .= '</a> needs the attendance updated.</p>';
+            $message .= '<p>Thanks,<br />'.self::SLUG.'</p>';
+
+            wp_mail($uInfo->user_email, self::SLUG.' Reminder', $message); //FROM NOBODY?
+         }
+
+         //JUST TO MAKE SURE THIS BAD BOY IS WORKING
          wp_mail('mbrooks34@gsu.edu', 'Test scheduler email', 'this is a test', array('From: Test Wordpress <nobody@gsu.edu>'));
       }
+
 
       /*
          Function: easterEgg
