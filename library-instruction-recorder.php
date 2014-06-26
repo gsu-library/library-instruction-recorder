@@ -92,7 +92,7 @@ if(!class_exists('LIR')) {
          //Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
          //ALSO, THIS SHOULD START TOMORROW TO PREVENT UNINTENDED SPAM
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime("00:01", time()), 'daily', self::SLUG.'_schedule');
+            wp_schedule_event(strtotime("00:00:01", time()), 'daily', self::SLUG.'_schedule');
          }
       }
 
@@ -376,7 +376,12 @@ if(!class_exists('LIR')) {
             */
             if($this->options['debug']) {
                echo '<div id="message" class="error">';
-               echo '<p>'.time().' - '.strtotime('00:01', time()).'</p>';
+               echo '<p><strong>Time</strong><br />';
+               echo time().' - '.date('c', time()).'</p>';
+               echo '<p><strong>First Schedule?</strong><br />';
+               echo strtotime('00:01', time()).' - '.date('c', strtotime('00:01', time())).'</p>';
+               echo '<p><strong>Next Schedule</strong><br />';
+               echo wp_next_scheduled(self::SLUG.'_schedule').' - '.date('c', wp_next_scheduled(self::SLUG.'_schedule')).'</p>';               
                echo '</div>';
             }
 
