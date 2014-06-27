@@ -1651,6 +1651,7 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
 
          $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
+         add_filter('wp_mail_content_type', 'set_html_content_type'); //So we can send HTML.
 
          foreach($results as $r) {
             $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
@@ -1664,8 +1665,7 @@ if(!class_exists('LIR')) {
             wp_mail($uInfo->user_email, self::SLUG.' Reminder', $message); //FROM NOBODY?
          }
 
-         //JUST TO MAKE SURE THIS BAD BOY IS WORKING
-         wp_mail('mbrooks34@gsu.edu', 'Test scheduler email', 'this is a test', array('From: Test Wordpress <nobody@gsu.edu>'));
+         remove_filter('wp_mail_content_type', 'set_html_content_type'); //Apparently there is a bug and this needs to happen.
       }
 
 
