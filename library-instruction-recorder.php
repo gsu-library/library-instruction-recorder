@@ -43,6 +43,7 @@ if(!class_exists('LIR')) {
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
       const TABLE_FLAGS = '_flags';
+      const SCHEDULE_TIME = '01:00:00';
       private $options;
       private $table;
 
@@ -92,7 +93,7 @@ if(!class_exists('LIR')) {
          //Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
          //ALSO, THIS SHOULD START TOMORROW TO PREVENT UNINTENDED SPAM
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime("01:00:00", time()), 'daily', self::SLUG.'_schedule');
+            wp_schedule_event(strtotime(self::SCHEDULE_TIME, time()), 'daily', self::SLUG.'_schedule');
          }
       }
 
@@ -191,7 +192,7 @@ if(!class_exists('LIR')) {
          //Remove scheduled hook.
          wp_clear_scheduled_hook(self::SLUG.'_schedule');
 
-         //*Remove options saved in wp_options table.
+         /*Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
 
          //Remove custom database tables (post & meta).
@@ -244,6 +245,7 @@ if(!class_exists('LIR')) {
          add_submenu_page(self::SLUG, 'Reports', 'Reports', 'edit_posts', self::SLUG.'-reports', array(&$this, 'reportsPage'));
          add_submenu_page(self::SLUG, 'Fields', 'Fields', 'manage_options', self::SLUG.'-fields', array(&$this, 'fieldsPage'));
          add_submenu_page(self::SLUG, 'Settings', 'Settings', 'manage_options', self::SLUG.'-settings', array(&$this, 'settingsPage'));
+         $this->updateNotificationCount();
       }
 
 
@@ -379,9 +381,13 @@ if(!class_exists('LIR')) {
                echo '<p><strong>Time</strong><br />';
                echo time().' - '.date('c', time()).'</p>';
                echo '<p><strong>First Schedule?</strong><br />';
-               echo strtotime('00:01', time()).' - '.date('c', strtotime('00:01', time())).'</p>';
+               echo strtotime(self::SCHEDULE_TIME, time()).' - '.date('c', strtotime(self::SCHEDULE_TIME, time())).'</p>';
                echo '<p><strong>Next Schedule</strong><br />';
-               echo wp_next_scheduled(self::SLUG.'_schedule').' - '.date('c', wp_next_scheduled(self::SLUG.'_schedule')).'</p>';               
+               echo wp_next_scheduled(self::SLUG.'_schedule').' - '.date('c', wp_next_scheduled(self::SLUG.'_schedule')).'</p>';
+
+               //global $menu;
+               //echo '<pre>'.print_r($menu, true).'</pre>';
+
                echo '</div>';
             }
 
@@ -1101,7 +1107,6 @@ if(!class_exists('LIR')) {
             }
          }
 
-
          if(($success !== false) && ($updateQuery !== false))   { return $id; } //Returns auto increment number on successful insertion.
          else                                                   { return false; } //Returns false if either update or insert failed.
       }
@@ -1651,7 +1656,7 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
 
          $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
-         add_filter('wp_mail_content_type', 'set_html_content_type'); //So we can send HTML.
+         add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); //So we can send HTML.
 
          foreach($results as $r) {
             $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
@@ -1665,7 +1670,37 @@ if(!class_exists('LIR')) {
             wp_mail($uInfo->user_email, self::SLUG.' Reminder', $message); //FROM NOBODY?
          }
 
-         remove_filter('wp_mail_content_type', 'set_html_content_type'); //Apparently there is a bug and this needs to happen.
+         remove_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); //Apparently there is a bug and this needs to happen.
+      }
+
+
+      /*
+
+      */
+      public function setMailToHtml($type) {
+         return 'text/html';
+      }
+
+
+      /*
+
+      */
+      private function updateNotificationCount() {
+         global $wpdb, $current_user, $menu;
+         $this->init($wpdb);
+         $position = NULL;
+
+         //Find LIR menu item.
+         foreach($menu as $k => $m) {
+            if($m[2] == self::SLUG) { $position = $k; }
+         }
+
+         if($position == NULL) { return; }
+
+         //Get count of classes that need to be updated.
+         $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
+         $notifications = ($count) ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
+         $menu[$position][0] = $this->options['slug'].$notifications; //Rewrite the entire name in case this function is called multiple times.
       }
 
 
