@@ -1661,13 +1661,14 @@ if(!class_exists('LIR')) {
          foreach($results as $r) {
             $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
 
-            $message  = '<p>'.$uInfo->display_name.',</p>';
-            $message .= '<p><a href="#">'.$r->department_group;  //NEED TO PUT THE URL HERE PLEASE
+            $message  = '<p>Greetings '.$uInfo->display_name.',</p>';
+            $message .= '<p>This email notificaion serves as a reminder that you need to fill in the number of attending students for the following completed class:</p>';
+            $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;  //NEED TO PUT THE URL HERE PLEASE
             $message .= $r->course_number ? ' '.$r->course_number : '';
-            $message .= '</a> needs the attendance updated.</p>';
-            $message .= '<p>Thanks,<br />'.self::SLUG.'</p>';
+            $message .= '</a></p>';
+            $message .= '<p>Warmly,<br />'.self::SLUG.'</p>';
 
-            wp_mail($uInfo->user_email, self::SLUG.' Reminder', $message); //FROM NOBODY?
+            wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); //FROM NOBODY?
          }
 
          remove_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); //Apparently there is a bug and this needs to happen.
