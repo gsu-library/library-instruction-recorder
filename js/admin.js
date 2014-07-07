@@ -127,5 +127,3 @@ function showDetails(id) {
       width: 360
    });
 }
-
-//sldjfslkdfjslkdfjk
