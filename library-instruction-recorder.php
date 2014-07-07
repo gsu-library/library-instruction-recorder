@@ -34,7 +34,7 @@ if(!class_exists('LIR')) {
          in WordPress.
    */
    class LIR {
-      //Do not change these variables. The plugin name and slug can be changed on the settings page.
+      // Do not change these variables. The plugin name and slug can be changed on the settings page.
       const NAME = 'Library Instruction Recorder';
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
@@ -1037,6 +1037,59 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
          get_currentuserinfo();
 
+
+         // NEW STUFF
+         $dataTypes = array();
+         $myQuery = $id ? 'UPDATE ' : 'INSERT INTO ';
+         $myQuery .= $this->table['posts'].' SET';
+
+         // Not NULL columns.
+         $myQuery .= ' librarian_name = %s,';
+         array_push($dataTypes, $_POST['librarian_name']);
+         $myQuery .= ' instructor_name = %s,';
+         array_push($dataTypes, $_POST['instructor_name']);
+         $myQuery .= ' class_location = %s,';
+         array_push($dataTypes, $_POST['class_location']);
+         $myQuery .= ' class_type = %s,';
+         array_push($dataTypes, $_POST['class_type']);
+         $myQuery .= ' audience = %s,';
+         array_push($dataTypes, $_POST['audience']);
+         $myQuery .= ' department_group = %s,';
+         array_push($dataTypes, $_POST['department_group']);
+         $myQuery .= ' last_updated_by = %d,';
+         array_push($dataTypes, $current_user->id);
+         // Datetime columns.
+         $myQuery .= ' class_start = \''.date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time'])).'\',';
+         $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes')).'\',';
+         // NULL columns.
+         $myQuery .= ' librarian2_name = ';
+         if(empty($_POST['librarian2_name']))   { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['librarian2_name']); }
+         $myQuery .= ' instructor_email = ';
+         if(empty($_POST['instructor_email']))  { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['instructor_email']); }
+         $myQuery .= ' instructor_phone = ';
+         if(empty($_POST['instructor_phone']))  { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['instructor_phone']); }
+         $myQuery .= ' class_description = ';
+         if(empty($_POST['class_description'])) { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['class_description']); }
+         $myQuery .= ' course_number = ';
+         if(empty($_POST['course_number']))     { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['course_number']); }
+         $myQuery .= ' attendance = ';
+         if(empty($_POST['attendance']))        { $myQuery .= 'NULL';  } else { $myQuery .= '%d';  array_push($dataTypes, $_POST['attendance']); }
+
+         // If is an update add ID.
+         if($id) {
+            $myQuery .= ' WHERE id = %d';
+            array_push($dataTypes, $id);
+         }
+         // If it is not an update include owner ID. This will have to be edited when owners can be changed.
+         else {
+            $myQuery .= ', owner_id = %d';
+            array_push($dataTypes, $current_user->id);
+         }
+
+         echo $wpdb->prepare($myQuery, $dataTypes);
+         // END NEW STUFF
+
+
          $data = array(
             'librarian_name'   => $_POST['librarian_name'],
             'instructor_name'  => $_POST['instructor_name'],
@@ -1047,7 +1100,7 @@ if(!class_exists('LIR')) {
             'last_updated_by'  => $current_user->id,
          );
 
-         //Only mess with owner_id if new submission (for now).
+         // Only mess with owner_id if new submission (for now).
          if(!$id) { $data['owner_id'] = $current_user->id; }
 
          $data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
@@ -1060,11 +1113,11 @@ if(!class_exists('LIR')) {
          if(!empty($_POST['course_number']))     { $data['course_number'] = $_POST['course_number']; }
          if(!empty($_POST['attendance']))        { $data['attendance'] = $_POST['attendance']; }
 
-         //Submit update query.
+         // Submit update query.
          if($id) {
             $success = $wpdb->update($this->table['posts'], $data, array('id' => $id));
          }
-         //Submit insert query.
+         // Submit insert query.
          else {
             $success = $wpdb->insert($this->table['posts'], $data);
             $id = $wpdb->insert_id;
@@ -1097,18 +1150,18 @@ if(!class_exists('LIR')) {
          */
          $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
          foreach($flagNames as $name) {
-            $d = substr($name, -1, 1); //Which flag number are we dealing with?
+            $d = substr($name, -1, 1); // Which flag number are we dealing with?
 
-            //Make sure flagName POST var exists.
+            // Make sure flagName POST var exists.
             if(!empty($_POST[$name])) {
                $value = (isset($_POST['flagValue'.$d]) && ($_POST['flagValue'.$d] == 'on')) ? 1 : 0;
-               //Maybe at some point check to see if $_POST[$name] is valid before submitting.
+               // Maybe at some point check to see if $_POST[$name] is valid before submitting.
                $wpdb->replace($this->table['flags'], array('posts_id' => $id, 'name' => $_POST[$name], 'value' => $value), array('%d', '%s', '%d'));
             }
          }
 
-         if(($success !== false) && ($updateQuery !== false))   { return $id; } //Returns auto increment number on successful insertion.
-         else                                                   { return false; } //Returns false if either update or insert failed.
+         if(($success !== false) && ($updateQuery !== false)) { return $id; } // Returns auto increment number on successful insertion.
+         else                                                 { return false; } // Returns false if either update or insert failed.
       }
 
 
@@ -1656,7 +1709,7 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
 
          $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
-         add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); //So we can send HTML.
+         add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // So we can send HTML.
 
          foreach($results as $r) {
             $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
@@ -1668,10 +1721,10 @@ if(!class_exists('LIR')) {
             $message .= '</a></p>';
             $message .= '<p>Warmly,<br />'.self::SLUG.'</p>';
 
-            wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); //FROM NOBODY?
+            wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); // FROM NOBODY?
          }
 
-         remove_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); //Apparently there is a bug and this needs to happen.
+         remove_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // Apparently there is a bug and this needs to happen (probably not a bad idea anyway).
       }
 
 
@@ -1702,7 +1755,7 @@ if(!class_exists('LIR')) {
          $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
          if(!$count) { return; } // Stop if there are no notifications.
          $notifications = ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>';
-         $menu[$position][0] = $this->options['slug'].$notifications; //Rewrite the entire name in case this function is called multiple times.
+         $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
       }
 
 
@@ -1722,9 +1775,9 @@ if(!class_exists('LIR')) {
    }
 
 
-   $LIR = new LIR();  //Create object only if class did not already exist.
+   $LIR = new LIR();  // Create object only if class did not already exist.
 }
 else {
-   //DISPLAY ERROR MESSAGE ABOUT CONFLICTING PLUGIN NAME
-   return; //should return to parent script
+   // DISPLAY ERROR MESSAGE ABOUT CONFLICTING PLUGIN NAME
+   return; // should return to parent script
 }
