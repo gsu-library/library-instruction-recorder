@@ -127,4 +127,3 @@ function showDetails(id) {
       width: 360
    });
 }
-//last test
