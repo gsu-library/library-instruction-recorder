@@ -1663,7 +1663,7 @@ if(!class_exists('LIR')) {
 
             $message  = '<p>Greetings '.$uInfo->display_name.',</p>';
             $message .= '<p>This email notificaion serves as a reminder that you need to fill in the number of attending students for the following completed class:</p>';
-            $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;  //NEED TO PUT THE URL HERE PLEASE
+            $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;
             $message .= $r->course_number ? ' '.$r->course_number : '';
             $message .= '</a></p>';
             $message .= '<p>Warmly,<br />'.self::SLUG.'</p>';
