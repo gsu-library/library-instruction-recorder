@@ -1660,7 +1660,7 @@ if(!class_exists('LIR')) {
 
          foreach($results as $r) {
             $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
-
+            
             $message  = '<p>Greetings '.$uInfo->display_name.',</p>';
             $message .= '<p>This email notificaion serves as a reminder that you need to fill in the number of attending students for the following completed class:</p>';
             $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;
@@ -1691,16 +1691,17 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
          $position = NULL;
 
-         //Find LIR menu item.
+         // Find LIR menu item.
          foreach($menu as $k => $m) {
             if($m[2] == self::SLUG) { $position = $k; }
          }
 
          if($position == NULL) { return; }
 
-         //Get count of classes that need to be updated.
+         // Get count of classes that need to be updated.
          $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
-         $notifications = ($count) ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
+         if(!$count) { return; } // Stop if there are no notifications.
+         $notifications = ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>';
          $menu[$position][0] = $this->options['slug'].$notifications; //Rewrite the entire name in case this function is called multiple times.
       }
 
