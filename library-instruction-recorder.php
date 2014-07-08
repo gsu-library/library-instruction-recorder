@@ -274,6 +274,7 @@ if(!class_exists('LIR')) {
       public function addCssJS() {
          global $parent_file;
 
+         // If admin page doesn't belong to LIR, do not add CSS and JS.
          if($parent_file != self::SLUG) { return; }
 
          wp_enqueue_script(self::SLUG.'-admin-JS', plugins_url('js/admin.js', __FILE__), array('jquery', 'jquery-ui-datepicker', 'jquery-ui-dialog'), self::VERSION);
@@ -744,7 +745,7 @@ if(!class_exists('LIR')) {
                      <td><select name="librarian_name"><option value=""></option>
 
                      <?php
-                     $user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->prefix."users ORDER BY display_name");
+                     $user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->users." ORDER BY display_name");
 
                      foreach($user as $u) {
                         if($u->display_name == "admin") { continue; }
@@ -1254,8 +1255,8 @@ if(!class_exists('LIR')) {
          $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
                    class_start, class_end, class_location, class_type, audience, class_description, department_group,
                    course_number, attendance, u.display_name as owner, last_updated,
-                   u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->prefix.'users u ON p.owner_id = u.ID
-                   JOIN '.$wpdb->prefix.'users u2 ON p.last_updated_by = u2.ID';
+                   u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->users.' u ON p.owner_id = u.ID
+                   JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
          $array = array();
 
          //Check if additional parameters have been given.
@@ -1719,7 +1720,7 @@ if(!class_exists('LIR')) {
             $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;
             $message .= $r->course_number ? ' '.$r->course_number : '';
             $message .= '</a></p>';
-            $message .= '<p>Warmly,<br />'.self::SLUG.'</p>';
+            $message .= '<p>Warmly,<br />'.$this->options['slug'].'</p>';
 
             wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); // FROM NOBODY?
          }
@@ -1746,7 +1747,7 @@ if(!class_exists('LIR')) {
 
          // Find LIR menu item.
          foreach($menu as $k => $m) {
-            if($m[2] == self::SLUG) { $position = $k; }
+            if($m[2] == self::SLUG) { $position = $k; } // I believe $m[2] is the ID of the menu item, hence self::SLUG instead of $this->options['slug'].
          }
 
          if($position == NULL) { return; }
