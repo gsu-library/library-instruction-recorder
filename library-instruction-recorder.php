@@ -859,7 +859,7 @@ if(!class_exists('LIR')) {
                         $_POST['class_length'] = (strtotime($_POST['class_end']) - strtotime($_POST['class_start'])) / 60;
                      }
                      else {
-                        date_default_timezone_set('EST5EDT');
+                        date_default_timezone_set('EST5EDT'); // This will probably be an issue at some point.
                         $minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
                         $time = date('g:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00').date(' A');
                      }
@@ -1039,7 +1039,6 @@ if(!class_exists('LIR')) {
          get_currentuserinfo();
 
 
-         // NEW STUFF
          $dataTypes = array();
          $myQuery = $id ? 'UPDATE ' : 'INSERT INTO ';
          $myQuery .= $this->table['posts'].' SET';
@@ -1059,9 +1058,12 @@ if(!class_exists('LIR')) {
          array_push($dataTypes, $_POST['department_group']);
          $myQuery .= ' last_updated_by = %d,';
          array_push($dataTypes, $current_user->id);
+
          // Datetime columns.
-         $myQuery .= ' class_start = \''.date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time'])).'\',';
-         $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes')).'\',';
+         $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
+         $myQuery .= ' class_start = \''.$classStart.'\',';
+         $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes')).'\',';
+
          // NULL columns.
          $myQuery .= ' librarian2_name = ';
          if(empty($_POST['librarian2_name']))   { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['librarian2_name']); }
@@ -1087,63 +1089,9 @@ if(!class_exists('LIR')) {
             array_push($dataTypes, $current_user->id);
          }
 
-         echo $wpdb->prepare($myQuery, $dataTypes);
-         // END NEW STUFF
+         $success = $wpdb->query($wpdb->prepare($myQuery, $dataTypes));
 
-
-         $data = array(
-            'librarian_name'   => $_POST['librarian_name'],
-            'instructor_name'  => $_POST['instructor_name'],
-            'class_location'   => $_POST['class_location'],
-            'class_type'       => $_POST['class_type'],
-            'audience'         => $_POST['audience'],
-            'department_group' => $_POST['department_group'],
-            'last_updated_by'  => $current_user->id,
-         );
-
-         // Only mess with owner_id if new submission (for now).
-         if(!$id) { $data['owner_id'] = $current_user->id; }
-
-         $data['class_start'] = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
-         $data['class_end']   = date('Y-m-d G:i', strtotime($data['class_start'].' +'.$_POST['class_length'].' minutes'));
-
-         if(!empty($_POST['librarian2_name']))   { $data['librarian2_name'] = $_POST['librarian2_name']; }
-         if(!empty($_POST['instructor_email']))  { $data['instructor_email'] = $_POST['instructor_email']; }
-         if(!empty($_POST['instructor_phone']))  { $data['instructor_phone'] = $_POST['instructor_phone']; }
-         if(!empty($_POST['class_description'])) { $data['class_description'] = $_POST['class_description']; }
-         if(!empty($_POST['course_number']))     { $data['course_number'] = $_POST['course_number']; }
-         if(!empty($_POST['attendance']))        { $data['attendance'] = $_POST['attendance']; }
-
-         // Submit update query.
-         if($id) {
-            $success = $wpdb->update($this->table['posts'], $data, array('id' => $id));
-         }
-         // Submit insert query.
-         else {
-            $success = $wpdb->insert($this->table['posts'], $data);
-            $id = $wpdb->insert_id;
-         }
-
-
-         /*
-            Insert and update cannot handle NULL values so perform a manual update to remedy this (if needed).
-            Only perform this operation if the insert or update above succeeded.
-         */
-         $updateQuery = true;
-         if(($success !== false) && (empty($_POST['librarian2_name']) || empty($_POST['instructor_email']) || empty($_POST['instructor_phone']) || empty($_POST['class_description']) || empty($_POST['course_number']) || empty($_POST['attendance']))) {
-            $query = 'UPDATE '.$this->table['posts'].' SET ';
-
-            if(empty($_POST['librarian2_name']))   { $query .= 'librarian2_name = NULL, '; }
-            if(empty($_POST['instructor_email']))  { $query .= 'instructor_email = NULL, '; }
-            if(empty($_POST['instructor_phone']))  { $query .= 'instructor_phone = NULL, '; }
-            if(empty($_POST['class_description'])) { $query .= 'class_description = NULL, '; }
-            if(empty($_POST['course_number']))     { $query .= 'course_number = NULL, '; }
-            if(empty($_POST['attendance']))        { $query .= 'attendance = NULL, '; }
-
-            $query = substr($query, 0, -2);
-            $query .= ' WHERE id = '.$id;
-            $updateQuery = $wpdb->query($query);
-         }
+         if(!$id) { $id = $wpdb->insert_id; }
 
 
          /*
@@ -1161,8 +1109,8 @@ if(!class_exists('LIR')) {
             }
          }
 
-         if(($success !== false) && ($updateQuery !== false)) { return $id; } // Returns auto increment number on successful insertion.
-         else                                                 { return false; } // Returns false if either update or insert failed.
+         if($success !== false) { return $id; } // Returns ID of the effected row.
+         else                   { return false; } // Returns false if either update or insert failed.
       }
 
 
