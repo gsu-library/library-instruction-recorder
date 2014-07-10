@@ -45,7 +45,7 @@ if(!class_exists('LIR')) {
       const TABLE_FLAGS = '_flags';
       const SCHEDULE_TIME = '01:00:00';
       private $options;
-      private $table;
+      private $tables;
 
 
       /*
@@ -77,21 +77,20 @@ if(!class_exists('LIR')) {
       */
       private function init(&$wpdb = NULL) {
          //If these values are set then return.
-         if(isset($this->options) && isset($this->table)) { return; }
+         if(isset($this->options) && isset($this->tables)) { return; }
          if($wpdb == NULL) { global $wpdb; }
 
          //Load options.
          $this->options = get_option(self::OPTIONS, NULL);
 
          //Prep table names.
-         $this->table = array(
+         $this->tables = array(
             'posts' => $wpdb->prefix.self::SLUG.self::TABLE_POSTS,
             'meta'  => $wpdb->prefix.self::SLUG.self::TABLE_META,
             'flags' => $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
          );
 
          //Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
-         //ALSO, THIS SHOULD START TOMORROW TO PREVENT UNINTENDED SPAM
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
             wp_schedule_event(strtotime(self::SCHEDULE_TIME, time()), 'daily', self::SLUG.'_schedule');
          }
@@ -308,12 +307,12 @@ if(!class_exists('LIR')) {
             Handle deletion if present.
          */
          if($delete) {
-            $query = $wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $delete);
+            $query = $wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $delete);
             $class = $wpdb->get_row($query);
 
             //Check if the user has permissions to remove the class and verify the nonce.
             if((current_user_can('manage_options') || $current_user->id == $class->owner_id) && wp_verify_nonce($_GET['n'], self::SLUG.'-delete-'.$delete)) {
-               $classRemoved = $wpdb->delete($this->table['posts'], array('id' => $delete), '%d');
+               $classRemoved = $wpdb->delete($this->tables['posts'], array('id' => $delete), '%d');
             }
          }
 
@@ -342,13 +341,13 @@ if(!class_exists('LIR')) {
          /*
             Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
          */
-         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
+         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
          $upcomingCount   = $wpdb->num_rows;
-         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY ".$orderQ);
+         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY ".$orderQ);
          $incompleteCount = $wpdb->num_rows;
-         $previous        = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
+         $previous        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
          $previousCount   = $wpdb->num_rows;
-         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->table['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
+         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
          $myclassesCount  = $wpdb->num_rows;
 
          //Pick list to display and setup for link persistence.
@@ -565,7 +564,7 @@ if(!class_exists('LIR')) {
                   }
 
                   //Flags.
-                  $flags = $wpdb->get_results('SELECT name, value FROM '.$this->table['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
+                  $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
                   foreach($flags as $f) {
                      echo '<td name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'" class="LIR-hide">';
                      echo $f['value'] ? 'yes' : 'no';
@@ -640,7 +639,7 @@ if(!class_exists('LIR')) {
             Edit a class setup and permission checking.
          */
          if($_GET['edit'] && !$_POST['edit']) {
-            $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->table['posts']." WHERE id = %d", $_GET['edit']));
+            $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['edit']));
 
             //Save DB to POST so fields can be populated from same pool during editing and failed submissions.
             foreach($class as $x => $y) {
@@ -807,7 +806,7 @@ if(!class_exists('LIR')) {
                          <option value="">&nbsp;</option>
 
                          <?php
-                         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
+                         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
 
                          foreach($departmentGroup as $x) {
                             if(!$classAdded && (esc_attr($x) == $_POST['department_group'])) {
@@ -885,7 +884,7 @@ if(!class_exists('LIR')) {
                          <option value="">&nbsp;</option>
 
                          <?php
-                         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
+                         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_location_values'"));
 
                          foreach($classLocation as $x) {
                             echo '<option value="'.esc_attr($x).'"';
@@ -906,7 +905,7 @@ if(!class_exists('LIR')) {
                         <option value="">&nbsp;</option>
 
                         <?php
-                        $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
+                        $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_type_values'"));
 
                         foreach($classType as $x) {
                            echo '<option value="'.esc_attr($x).'"';
@@ -927,7 +926,7 @@ if(!class_exists('LIR')) {
                         <option value="">&nbsp;</option>
 
                         <?php
-                        $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
+                        $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'audience_values'"));
 
                         foreach($audience as $x) {
                            echo '<option value="'.esc_attr($x).'"';
@@ -949,11 +948,11 @@ if(!class_exists('LIR')) {
                   */
                   //If is a non-submitted edit.
                   if(($classAdded === NULL) && isset($_GET['edit'])) {
-                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->table['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
+                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
                   }
                   //Else if is a new entry or after a successful submission.
                   else if(($classAdded === NULL) || $classAdded) {
-                     $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'flag_info'"));
+                     $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
                   }
                   //Else if it is a failed submission we will look at the POST variables.
 
@@ -1041,7 +1040,7 @@ if(!class_exists('LIR')) {
 
          $dataTypes = array();
          $myQuery = $id ? 'UPDATE ' : 'INSERT INTO ';
-         $myQuery .= $this->table['posts'].' SET';
+         $myQuery .= $this->tables['posts'].' SET';
 
          // Not NULL columns.
          $myQuery .= ' librarian_name = %s,';
@@ -1105,7 +1104,7 @@ if(!class_exists('LIR')) {
             if(!empty($_POST[$name])) {
                $value = (isset($_POST['flagValue'.$d]) && ($_POST['flagValue'.$d] == 'on')) ? 1 : 0;
                // Maybe at some point check to see if $_POST[$name] is valid before submitting.
-               $wpdb->replace($this->table['flags'], array('posts_id' => $id, 'name' => $_POST[$name], 'value' => $value), array('%d', '%s', '%d'));
+               $wpdb->replace($this->tables['flags'], array('posts_id' => $id, 'name' => $_POST[$name], 'value' => $value), array('%d', '%s', '%d'));
             }
          }
 
@@ -1149,7 +1148,7 @@ if(!class_exists('LIR')) {
                      <th>Primary Librarian <em>(optional)</em></th>
                      <td><select name="librarian_name"><option value=""></option>
                      <?php
-                     $name = $wpdb->get_results("SELECT DISTINCT librarian_name FROM ".$this->table['posts']." ORDER BY librarian_name");
+                     $name = $wpdb->get_results("SELECT DISTINCT librarian_name FROM ".$this->tables['posts']." ORDER BY librarian_name");
 
                      foreach($name as $n) {
                         echo '<option value="'.$n->librarian_name.'">'.$n->librarian_name.'</option>';
@@ -1203,7 +1202,7 @@ if(!class_exists('LIR')) {
          $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
                    class_start, class_end, class_location, class_type, audience, class_description, department_group,
                    course_number, attendance, u.display_name as owner, last_updated,
-                   u2.display_name as last_updated_by FROM '.$this->table['posts'].' p JOIN '.$wpdb->users.' u ON p.owner_id = u.ID
+                   u2.display_name as last_updated_by FROM '.$this->tables['posts'].' p JOIN '.$wpdb->users.' u ON p.owner_id = u.ID
                    JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
          $array = array();
 
@@ -1248,7 +1247,7 @@ if(!class_exists('LIR')) {
 
          //Add flags to each record.
          foreach($result as $i => $v) {
-            $flags = $wpdb->get_results('SELECT name, value FROM '.$this->table['flags'].' WHERE posts_id = '.$v['id'], ARRAY_A);
+            $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags'].' WHERE posts_id = '.$v['id'], ARRAY_A);
 
             //Put values in a temp array to be imploded later.
             $tempA = array();
@@ -1327,11 +1326,11 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
 
          //Get current fields from database.
-         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'department_group_values'"));
-         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_location_values'"));
-         $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'class_type_values'"));
-         $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'audience_values'"));
-         $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->table['meta']." WHERE field = 'flag_info'"));
+         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
+         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_location_values'"));
+         $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_type_values'"));
+         $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'audience_values'"));
+         $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
 
 
          /*
@@ -1343,12 +1342,12 @@ if(!class_exists('LIR')) {
                if($departmentGroup) {
                   array_push($departmentGroup, $_POST['deptGroupTB']);
                   natcasesort($departmentGroup);
-                  $wpdb->update($this->table['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
+                  $wpdb->update($this->tables['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
                }
                else {
                   $departmentGroup = array();
                   array_push($departmentGroup, $_POST['deptGroupTB']);
-                  $wpdb->insert($this->table['meta'], array('field' => 'department_group_values', 'value' => serialize($departmentGroup)));
+                  $wpdb->insert($this->tables['meta'], array('field' => 'department_group_values', 'value' => serialize($departmentGroup)));
                }
             }
             //Remove a department / group field from the database.
@@ -1359,10 +1358,10 @@ if(!class_exists('LIR')) {
                   unset($departmentGroup[$_POST['deptGroupSB']]);
 
                   if($departmentGroup) {
-                     $wpdb->update($this->table['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
+                     $wpdb->update($this->tables['meta'], array('value' => serialize($departmentGroup)), array('field' => 'department_group_values'));
                   }
                   else {
-                     $wpdb->delete($this->table['meta'], array('field' => 'department_group_values'));
+                     $wpdb->delete($this->tables['meta'], array('field' => 'department_group_values'));
                   }
                }
             }
@@ -1371,12 +1370,12 @@ if(!class_exists('LIR')) {
                if($classLocation) {
                   array_push($classLocation, $_POST['classLocTB']);
                   natcasesort($classLocation);
-                  $wpdb->update($this->table['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
+                  $wpdb->update($this->tables['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
                }
                else {
                   $classLocation = array();
                   array_push($classLocation, $_POST['classLocTB']);
-                  $wpdb->insert($this->table['meta'], array('field' => 'class_location_values', 'value' => serialize($classLocation)));
+                  $wpdb->insert($this->tables['meta'], array('field' => 'class_location_values', 'value' => serialize($classLocation)));
                }
             }
             //Remove a class location field from the database.
@@ -1387,10 +1386,10 @@ if(!class_exists('LIR')) {
                   unset($classLocation[$_POST['classLocSB']]);
 
                   if($classLocation) {
-                     $wpdb->update($this->table['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
+                     $wpdb->update($this->tables['meta'], array('value' => serialize($classLocation)), array('field' => 'class_location_values'));
                   }
                   else {
-                     $wpdb->delete($this->table['meta'], array('field' => 'class_location_values'));
+                     $wpdb->delete($this->tables['meta'], array('field' => 'class_location_values'));
                   }
                }
             }
@@ -1399,12 +1398,12 @@ if(!class_exists('LIR')) {
                if($classType) {
                   array_push($classType, $_POST['classTypeTB']);
                   natcasesort($classType);
-                  $wpdb->update($this->table['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
+                  $wpdb->update($this->tables['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
                }
                else {
                   $classType = array();
                   array_push($classType, $_POST['classTypeTB']);
-                  $wpdb->insert($this->table['meta'], array('field' => 'class_type_values', 'value' => serialize($classType)));
+                  $wpdb->insert($this->tables['meta'], array('field' => 'class_type_values', 'value' => serialize($classType)));
                }
             }
             //Remove a class type field from the database.
@@ -1415,10 +1414,10 @@ if(!class_exists('LIR')) {
                   unset($classType[$_POST['classTypeSB']]);
 
                   if($classType) {
-                     $wpdb->update($this->table['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
+                     $wpdb->update($this->tables['meta'], array('value' => serialize($classType)), array('field' => 'class_type_values'));
                   }
                   else {
-                     $wpdb->delete($this->table['meta'], array('field' => 'class_type_values'));
+                     $wpdb->delete($this->tables['meta'], array('field' => 'class_type_values'));
                   }
                }
             }
@@ -1427,12 +1426,12 @@ if(!class_exists('LIR')) {
                if($audience) {
                   array_push($audience, $_POST['audienceTB']);
                   natcasesort($audience);
-                  $wpdb->update($this->table['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
+                  $wpdb->update($this->tables['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
                }
                else {
                   $audience = array();
                   array_push($audience, $_POST['audienceTB']);
-                  $wpdb->insert($this->table['meta'], array('field' => 'audience_values', 'value' => serialize($audience)));
+                  $wpdb->insert($this->tables['meta'], array('field' => 'audience_values', 'value' => serialize($audience)));
                }
             }
             //Remove an audience field from the database.
@@ -1443,10 +1442,10 @@ if(!class_exists('LIR')) {
                   unset($audience[$_POST['audienceSB']]);
 
                   if($audience) {
-                     $wpdb->update($this->table['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
+                     $wpdb->update($this->tables['meta'], array('value' => serialize($audience)), array('field' => 'audience_values'));
                   }
                   else {
-                     $wpdb->delete($this->table['meta'], array('field' => 'audience_values'));
+                     $wpdb->delete($this->tables['meta'], array('field' => 'audience_values'));
                   }
                }
             }
@@ -1465,7 +1464,7 @@ if(!class_exists('LIR')) {
                }
 
 
-               $wpdb->replace($this->table['meta'], array('field' => 'flag_info', 'value' => serialize($flags)));
+               $wpdb->replace($this->tables['meta'], array('field' => 'flag_info', 'value' => serialize($flags)));
             }
          }
          /*
@@ -1657,7 +1656,7 @@ if(!class_exists('LIR')) {
          global $wpdb;
          $this->init($wpdb);
 
-         $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
+         $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->tables['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
          add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // So we can send HTML.
 
          foreach($results as $r) {
@@ -1701,7 +1700,7 @@ if(!class_exists('LIR')) {
          if($position == NULL) { return; }
 
          // Get count of classes that need to be updated.
-         $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->table['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
+         $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->tables['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
          if(!$count) { return; } // Stop if there are no notifications.
          $notifications = ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
