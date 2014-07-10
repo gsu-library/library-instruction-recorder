@@ -53,18 +53,18 @@ if(!class_exists('LIR')) {
             Adds register hooks, actions, and filters to WP upon construction.
       */
       public function __construct() {
-         //Registration hooks.
+         // Registration hooks.
          register_activation_hook(__FILE__, array(&$this, 'activationHook'));
          register_deactivation_hook(__FILE__, array(&$this, 'deactivationHook'));
          register_uninstall_hook(__FILE__, array(&$this, 'uninstallHook'));
 
-         //Actions and filters.
+         // Actions and filters.
          add_action('admin_menu', array(&$this, 'createMenu'));
          add_action('admin_init', array(&$this, 'adminInit'));
          add_action('admin_enqueue_scripts', array(&$this, 'addCssJS'));
          add_action('admin_post_'.self::SLUG.'DL', array(&$this, 'generateReport'));
          add_action(self::SLUG.'_schedule', array(&$this, 'emailReminders'));
-         //add_filter('the_content', array(&$this, 'easterEgg')); //For testing purposes.
+         //add_filter('the_content', array(&$this, 'easterEgg')); // For testing purposes.
       }
 
 
@@ -76,23 +76,23 @@ if(!class_exists('LIR')) {
             wpdb   -   Takes the global variable $wpdb by reference to save on duplication.
       */
       private function init(&$wpdb = NULL) {
-         //If these values are set then return.
+         // If these values are set then return.
          if(isset($this->options) && isset($this->tables)) { return; }
          if($wpdb == NULL) { global $wpdb; }
 
-         //Load options.
+         // Load options.
          $this->options = get_option(self::OPTIONS, NULL);
 
-         //Prep table names.
+         // Prep table names.
          $this->tables = array(
             'posts' => $wpdb->prefix.self::SLUG.self::TABLE_POSTS,
             'meta'  => $wpdb->prefix.self::SLUG.self::TABLE_META,
             'flags' => $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
          );
 
-         //Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
+         // Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime(self::SCHEDULE_TIME, time()), 'daily', self::SLUG.'_schedule');
+            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
          }
       }
 
@@ -381,7 +381,7 @@ if(!class_exists('LIR')) {
                echo '<p><strong>Time</strong><br />';
                echo time().' - '.date('c', time()).'</p>';
                echo '<p><strong>First Schedule?</strong><br />';
-               echo strtotime(self::SCHEDULE_TIME, time()).' - '.date('c', strtotime(self::SCHEDULE_TIME, time())).'</p>';
+               echo strtotime(self::SCHEDULE_TIME.' +1 day', time()).' - '.date('c', strtotime(self::SCHEDULE_TIME.' +1 day', time())).'</p>';
                echo '<p><strong>Next Schedule</strong><br />';
                echo wp_next_scheduled(self::SLUG.'_schedule').' - '.date('c', wp_next_scheduled(self::SLUG.'_schedule')).'</p>';
 
