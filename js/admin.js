@@ -36,7 +36,7 @@
       $  -  Sets the jQuery object to be $ since jQuery is running in no conflict mode.
 */
 jQuery(function($) {
-   //Initializes DatePicker for add a class.
+   // Initializes DatePicker for add a class.
    if($('#classDate').length) {
       $('#classDate').datepicker({
          dateFormat : 'm/d/yy'
@@ -55,23 +55,30 @@ jQuery(function($) {
       });
    }
 
-   //Stops the delete links on the upcoming classes page from firing.
+   // Stops the delete links on the upcoming classes page from firing.
    $('.removeLink').each(function() {
       $(this).click(function(e) {
          e.preventDefault();
       });
    });
 
-   //Stops the details links on the upcoming classes page from firing.
+   // Stops the details links on the upcoming classes page from firing.
    $('.detailsLink').each(function() {
       $(this).click(function(e) {
          e.preventDefault();
       });
    });
+
+   // Fades out containers that have the class LIR-fade.
+   // Wait can be used after jQuery is updated to 1.4 or later.
+   $('.LIR-fade').each(function(){
+      $(this).fadeOut(4000);
+      //$(this).wait(2000).fadeOut(2000);
+   });
 });
 
 
-//Sets up $j for jQuery no conflict mode.
+// Sets up $j for jQuery no conflict mode.
 var $j = jQuery.noConflict();
 
 

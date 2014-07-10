@@ -1604,6 +1604,15 @@ if(!class_exists('LIR')) {
          ?>
          <div class="wrap">
             <h2>Settings</h2>
+
+            <?php
+            if(!empty($_GET['settings-updated'])) {
+               echo '<div id="message" class="updated '.self::SLUG.'-fade">';
+               echo 'The settings have been updated!';
+               echo '</div>';
+            }
+            ?>
+
             <form method="post" action="options.php">
                <?php settings_fields(self::OPTIONS_GROUP); ?>
                <table class="form-table">
