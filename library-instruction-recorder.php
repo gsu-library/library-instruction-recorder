@@ -497,6 +497,11 @@ if(!class_exists('LIR')) {
                echo '<tfoot><tr>'.$tableHF.'</tr></tfoot>';
                echo '<tbody>';
 
+               // If there are no classes to list, display messsage.
+               if(empty($result)) {
+                  echo '<tr><td colspan="6"><strong>No classes are currently available in this view.</strong></td></tr>';
+               }
+
                //Post a table row for each class in $result.
                foreach($result as $class) {
                   if($class->class_description) {
