@@ -428,11 +428,6 @@ if(!class_exists('LIR')) {
                ?>
             </ul>
 
-            <p class="search-box">
-               <input type="search" name="s" value="in development" />
-               <input type="submit" class="button" value="?" />
-            </p>
-
             <table class="widefat fixed">
                <?php
                $tableHF = '<th class="check-column">&nbsp;</th>';
