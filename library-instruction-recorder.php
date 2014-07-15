@@ -277,8 +277,10 @@ if(!class_exists('LIR')) {
          if($parent_file != self::SLUG) { return; }
 
          wp_enqueue_script(self::SLUG.'-admin-JS', plugins_url('js/admin.js', __FILE__), array('jquery', 'jquery-ui-datepicker', 'jquery-ui-dialog'), self::VERSION);
-         wp_enqueue_style(self::SLUG.'-admin-CSS', plugins_url('css/admin.css', __FILE__), array(), self::VERSION);
-         wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), false, '1.10.3');
+         wp_enqueue_script(self::SLUG.'-admin-dataTables-JS', plugins_url('js/jquery.dataTables.min.js', __FILE__), array('jquery'), '1.10.1');
+         wp_enqueue_style(self::SLUG.'-admin-Css', plugins_url('css/admin.css', __FILE__), array(), self::VERSION);
+         wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), array(), '1.10.3');
+         wp_enqueue_style(self::SLUG.'-dataTables-Css', plugins_url('css/dataTables/css/jquery.dataTables.min.css', __FILE__), array(), '1.10.1');
       }
 
 
@@ -588,7 +590,7 @@ if(!class_exists('LIR')) {
                   echo '<td name="Last_Updated" class="LIR-hide">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</td>';
 
                   //Start Options section.
-                  echo '<td name="skip"><a class="detailsLink" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Details</a>';
+                  echo '<td name="skip"><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Details</a>';
 
                   //Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
@@ -597,7 +599,7 @@ if(!class_exists('LIR')) {
                      if($orderBy)   { $extras .= '&orderby='.$orderBy; }
                      if($mode)      { $extras .= $mode; }
 
-                     echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="removeLink" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
+                     echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
                   }
 
                   echo '</td></tr>';
@@ -836,7 +838,7 @@ if(!class_exists('LIR')) {
                      <td>
 
                      <?php
-                     echo '<input type="text" id="classDate" name="class_date" value="';
+                     echo '<input type="text" class="'.self::SLUG.'-date" name="class_date" value="';
 
                      if(!$classAdded && !empty($_POST['class_date'])) {
                         echo $_POST['class_date'];
@@ -1134,7 +1136,7 @@ if(!class_exists('LIR')) {
             <h2>Reports</h2>
 
             <?php
-            //Debugging
+            // Debugging
             if($this->options['debug'] && !empty($_POST)) {
                echo '<div id="message" class="error">';
                echo '<p><strong>POST</strong></p>
@@ -1159,11 +1161,11 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>Start Date <em>(optional)</em></th>
-                     <td><input id="reportStartDate" type="text" name="startDate" /></td>
+                     <td><input class="<?= self::SLUG.'-date'; ?>" type="text" name="startDate" /></td>
                   </tr>
                   <tr>
                      <th>End Date <em>(optional)</em></th>
-                     <td><input id="reportEndDate" type="text" name="endDate" /></td>
+                     <td><input class="<?= self::SLUG.'-date'; ?>" type="text" name="endDate" /></td>
                   </tr>
                   <tr>
                      <th>Options</th>
@@ -1207,9 +1209,9 @@ if(!class_exists('LIR')) {
                    JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
          $array = array();
 
-         //Check if additional parameters have been given.
+         // Check if additional parameters have been given.
          if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
-            //Prepare the query with WHERE statement.
+            // Prepare the query with WHERE statement.
             $query .= ' WHERE';
 
             if(!empty($_POST['librarian_name'])) {
@@ -1230,10 +1232,10 @@ if(!class_exists('LIR')) {
                $fileName .= ' ending '.$date;
             }
 
-            //Remove trailing AND from query.
+            // Remove trailing AND from query.
             $query = substr($query, 0, -4);
 
-            //Prepare query.
+            // Prepare query.
             $query = $wpdb->prepare($query, $array);
          }
          else {
@@ -1244,13 +1246,13 @@ if(!class_exists('LIR')) {
          $query .= ' ORDER BY class_start, class_end';
          $result = $wpdb->get_results($query, ARRAY_A);
          $column = $wpdb->get_col_info('name');
-         array_push($column, 'flags'); //Manually add flags column.
+         array_push($column, 'flags'); // Manually add flags column.
 
-         //Add flags to each record.
+         // Add flags to each record.
          foreach($result as $i => $v) {
             $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags'].' WHERE posts_id = '.$v['id'], ARRAY_A);
 
-            //Put values in a temp array to be imploded later.
+            // Put values in a temp array to be imploded later.
             $tempA = array();
             foreach($flags as $f) {
                $tempS = $f['value'] ? 'yes' : 'no';
@@ -1268,7 +1270,7 @@ if(!class_exists('LIR')) {
                fputcsv($f, $line);
             }
 
-            //Send the proper header information for a CSV file.
+            // Send the proper header information for a CSV file.
             header("Content-type: text/csv");
             header("Content-Disposition: attachment; filename=".$fileName);
             header("Pragma: no-cache");
@@ -1279,10 +1281,10 @@ if(!class_exists('LIR')) {
             fclose($f);
             exit;
          }
-         //Do this if output requested is a report.
+         // Do this if output requested is a report.
          else if($result) {
             ?>
-            <table style="width:2000px;" class="widefat fixed">
+            <table id="reportTable" class="widefat fixed">
                <thead>
                   <tr>
                      <?php
