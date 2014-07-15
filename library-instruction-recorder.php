@@ -1136,7 +1136,7 @@ if(!class_exists('LIR')) {
             <h2>Reports</h2>
 
             <?php
-            //Debugging
+            // Debugging
             if($this->options['debug'] && !empty($_POST)) {
                echo '<div id="message" class="error">';
                echo '<p><strong>POST</strong></p>
@@ -1209,9 +1209,9 @@ if(!class_exists('LIR')) {
                    JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
          $array = array();
 
-         //Check if additional parameters have been given.
+         // Check if additional parameters have been given.
          if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
-            //Prepare the query with WHERE statement.
+            // Prepare the query with WHERE statement.
             $query .= ' WHERE';
 
             if(!empty($_POST['librarian_name'])) {
@@ -1232,10 +1232,10 @@ if(!class_exists('LIR')) {
                $fileName .= ' ending '.$date;
             }
 
-            //Remove trailing AND from query.
+            // Remove trailing AND from query.
             $query = substr($query, 0, -4);
 
-            //Prepare query.
+            // Prepare query.
             $query = $wpdb->prepare($query, $array);
          }
          else {
@@ -1246,13 +1246,13 @@ if(!class_exists('LIR')) {
          $query .= ' ORDER BY class_start, class_end';
          $result = $wpdb->get_results($query, ARRAY_A);
          $column = $wpdb->get_col_info('name');
-         array_push($column, 'flags'); //Manually add flags column.
+         array_push($column, 'flags'); // Manually add flags column.
 
-         //Add flags to each record.
+         // Add flags to each record.
          foreach($result as $i => $v) {
             $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags'].' WHERE posts_id = '.$v['id'], ARRAY_A);
 
-            //Put values in a temp array to be imploded later.
+            // Put values in a temp array to be imploded later.
             $tempA = array();
             foreach($flags as $f) {
                $tempS = $f['value'] ? 'yes' : 'no';
@@ -1270,7 +1270,7 @@ if(!class_exists('LIR')) {
                fputcsv($f, $line);
             }
 
-            //Send the proper header information for a CSV file.
+            // Send the proper header information for a CSV file.
             header("Content-type: text/csv");
             header("Content-Disposition: attachment; filename=".$fileName);
             header("Pragma: no-cache");
@@ -1281,10 +1281,10 @@ if(!class_exists('LIR')) {
             fclose($f);
             exit;
          }
-         //Do this if output requested is a report.
+         // Do this if output requested is a report.
          else if($result) {
             ?>
-            <table style="width:2000px;" class="widefat fixed">
+            <table id="reportTable" class="widefat fixed">
                <thead>
                   <tr>
                      <?php

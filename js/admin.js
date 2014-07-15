@@ -38,7 +38,7 @@
 jQuery(function($) {
    // Initializes DatePicker for date fields.
    $('.LIR-date').datepicker({
-      dateFormat : 'm/d/yy'
+      dateFormat: 'm/d/yy'
    });
 
    // Stops links from firing.
@@ -49,6 +49,12 @@ jQuery(function($) {
    // Fades out containers that have the class LIR-fade.
    $('.LIR-fade').each(function(){
       $(this).delay(2000).fadeOut(2000);
+   });
+
+   // DataTables for the report table.
+   $('#reportTable').DataTable({
+      scrollX: true,
+      pageLength: 5
    });
 });
 
