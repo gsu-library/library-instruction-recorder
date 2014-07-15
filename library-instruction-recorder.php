@@ -635,32 +635,39 @@ if(!class_exists('LIR')) {
          $error = array();
 
 
-         /*
-            Edit a class setup and permission checking.
-         */
+         // Prepare required meta fields (so we can check these).
+         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
+         if(empty($departmentGroup)) { array_push($error, 'The department/group field is empty, please contact an administrator before continuing.'); }
+         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_location_values'"));
+         if(empty($classLocation)) { array_push($error, 'The class location field is empty, please contact an administrator before continuing.'); }
+         $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_type_values'"));
+         if(empty($classType)) { array_push($error, 'The class type field is empty, please contact an administrator before continuing.'); }
+         $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'audience_values'"));
+         if(empty($audience)) { array_push($error, 'The audience field is empty, please contact an administrator before continuing.'); }
+
+
+         // Edit a class setup and permission checking (for edit).
          if($_GET['edit'] && !$_POST['edit']) {
             $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['edit']));
 
-            //Save DB to POST so fields can be populated from same pool during editing and failed submissions.
+            // Save DB to POST so fields can be populated from same pool during editing and failed submissions.
             foreach($class as $x => $y) {
                $_POST[$x] = $y;
             }
 
-            //Permission checking.
+            // Permission checking.
             if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
                array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
-               $_POST['submitted'] = NULL; //Ensures the class is never processed for submission.
+               $_POST['submitted'] = NULL; // Ensures the class is never processed for submission.
             }
          }
 
 
-         /*
-            Submission handling.
-         */
+         // Submission handling. **This should be done before headers are sent.**
          if(isset($_POST['submitted']) && ($debug['nonce verified'] = wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_add_class'))) {
-            $classAdded = false; //Needed.
+            $classAdded = false; // Needed.
 
-            //Check to make sure all required fields have been submitted.
+            // Check to make sure all required fields have been submitted.
             if(empty($_POST['librarian_name']))     { array_push($error, 'Missing Field: Primary Librarian'); }
             if(empty($_POST['instructor_name']))    { array_push($error, 'Missing Field: Instructor Name'); }
             if(empty($_POST['department_group']))   { array_push($error, 'Missing Field: Department/Group'); }
@@ -671,12 +678,12 @@ if(!class_exists('LIR')) {
             if(empty($_POST['class_type']))         { array_push($error, 'Missing Field: Class Type'); }
             if(empty($_POST['audience']))           { array_push($error, 'Missing Field: Audience'); }
 
-            //Go to function to insert data into database.
+            // Go to function to insert data into database.
             if(empty($error)) { $classAdded = $this->addUpdateClass($_POST['edit']); }
             if($classAdded === 0) { $classAdded = true; } //This will make things easier from here on down.
-            //If update fails with no other errors.
+            // If update fails with no other errors.
             if(!$classAdded && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
-            //If insert fails with no other errors.
+            // If insert fails with no other errors.
             else if(!$classAdded && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
          }
          ?>
@@ -685,7 +692,7 @@ if(!class_exists('LIR')) {
             <h2><?= ($_GET['edit']) ? 'Edit' : 'Add'; ?> a Class</h2>
 
             <?php
-            //Added for debugging (if set).
+            // Added for debugging (if set).
             if($this->options['debug'] && (!empty($_POST) || !empty($debug))) {
                echo '<div id="message" class="error">';
 
@@ -710,21 +717,11 @@ if(!class_exists('LIR')) {
                echo '<p>Last Query: '.$wpdb->last_query.'</p>';
                echo '</div>';
             }
+            // End debugging.
 
-            //Message if class was added.
-            if($classAdded && !$_POST['edit']) {
-               echo '<div id="message" class="updated">
-                  <p><strong>The class has been added!</strong> Need to <a href="'.$baseUrl.'&edit='.$classAdded.'">edit it?</a> Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
-               </div>';
-            }
-            //Message if class was updated.
-            else if($classAdded && $_POST['edit']) {
-               echo '<div id="message" class="updated">
-                  <p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
-               </div>';
-            }
-            //Message if an error occurred.
-            else if(!empty($error)) {
+            // Message if an error occurred. 
+            // Separating this from success messages since there are instances of a submission going through with an error present.
+            if(!empty($error)) {
                echo '<div id="message" class="error">
                   <p><strong>';
 
@@ -733,6 +730,18 @@ if(!class_exists('LIR')) {
                   }
 
                   echo '</strong></p>
+               </div>';
+            }
+            // Message if class was added.
+            if($classAdded && !$_POST['edit']) {
+               echo '<div id="message" class="updated">
+                  <p><strong>The class has been added!</strong> Need to <a href="'.$baseUrl.'&edit='.$classAdded.'">edit it?</a> Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
+               </div>';
+            }
+            // Message if class was updated.
+            else if($classAdded && $_POST['edit']) {
+               echo '<div id="message" class="updated">
+                  <p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
                </div>';
             }
             ?>
@@ -750,11 +759,11 @@ if(!class_exists('LIR')) {
                         if($u->display_name == "admin") { continue; }
                         echo '<option value="'.$u->display_name.'"';
 
-                        //If there was a submission error display submitted name display submitted user.
+                        // If there was a submission error display submitted name display submitted user.
                         if((($classAdded === false) && ($u->display_name == $_POST['librarian_name']))) {
                            echo ' selected="selected"';
                         }
-                        //If nothing has been submitted yet or there has been a successful submission select current user.
+                        // If nothing has been submitted yet or there has been a successful submission select current user.
                         else if(($classAdded || ($classAdded === NULL)) && ($u->display_name == $user_identity)) {
                            echo ' selected="selected"';
                         }
@@ -806,8 +815,6 @@ if(!class_exists('LIR')) {
                          <option value="">&nbsp;</option>
 
                          <?php
-                         $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
-
                          foreach($departmentGroup as $x) {
                             if(!$classAdded && (esc_attr($x) == $_POST['department_group'])) {
                                echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
@@ -884,8 +891,6 @@ if(!class_exists('LIR')) {
                          <option value="">&nbsp;</option>
 
                          <?php
-                         $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_location_values'"));
-
                          foreach($classLocation as $x) {
                             echo '<option value="'.esc_attr($x).'"';
 
@@ -905,8 +910,6 @@ if(!class_exists('LIR')) {
                         <option value="">&nbsp;</option>
 
                         <?php
-                        $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_type_values'"));
-
                         foreach($classType as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
@@ -926,8 +929,6 @@ if(!class_exists('LIR')) {
                         <option value="">&nbsp;</option>
 
                         <?php
-                        $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'audience_values'"));
-
                         foreach($audience as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
@@ -946,19 +947,19 @@ if(!class_exists('LIR')) {
                   /*
                      Flags.
                   */
-                  //If is a non-submitted edit.
+                  // If is a non-submitted edit.
                   if(($classAdded === NULL) && isset($_GET['edit'])) {
                      $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
                   }
-                  //Else if is a new entry or after a successful submission.
+                  // Else if is a new entry or after a successful submission.
                   else if(($classAdded === NULL) || $classAdded) {
                      $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
                   }
-                  //Else if it is a failed submission we will look at the POST variables.
+                  // Else if it is a failed submission we will look at the POST variables.
 
                   $i = 1;
 
-                  //Non-submitted edits.
+                  // Non-submitted edits.
                   if(($classAdded === NULL) && isset($_GET['edit'])) {
                      foreach($flags as $f) {
                         echo '<tr><th>'.$f->name.'</th>';
@@ -973,7 +974,7 @@ if(!class_exists('LIR')) {
                         $i++;
                      }
                   }
-                  //For new entries and after successful submissions.
+                  // For new entries and after successful submissions.
                   else if(($classAdded === NULL) || $classAdded) {
                      foreach($flags as $name => $isEnabled) {
                         if($isEnabled) {
@@ -984,8 +985,8 @@ if(!class_exists('LIR')) {
                         }
                      }
                   }
-                  //For failed submissions (edit or new).
-                  //This could potentially be manipulated by fake POST data.
+                  // For failed submissions (edit or new).
+                  // This could potentially be manipulated by fake POST data.
                   else if($classAdded === false) {
                      $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
 
