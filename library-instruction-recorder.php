@@ -277,8 +277,10 @@ if(!class_exists('LIR')) {
          if($parent_file != self::SLUG) { return; }
 
          wp_enqueue_script(self::SLUG.'-admin-JS', plugins_url('js/admin.js', __FILE__), array('jquery', 'jquery-ui-datepicker', 'jquery-ui-dialog'), self::VERSION);
-         wp_enqueue_style(self::SLUG.'-admin-CSS', plugins_url('css/admin.css', __FILE__), array(), self::VERSION);
-         wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), false, '1.10.3');
+         wp_enqueue_script(self::SLUG.'-admin-dataTables-JS', plugins_url('js/jquery.dataTables.min.js', __FILE__), array('jquery'), '1.10.1');
+         wp_enqueue_style(self::SLUG.'-admin-Css', plugins_url('css/admin.css', __FILE__), array(), self::VERSION);
+         wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), array(), '1.10.3');
+         wp_enqueue_style(self::SLUG.'-dataTables-Css', plugins_url('css/dataTables/css/jquery.dataTables.min.css', __FILE__), array(), '1.10.1');
       }
 
 
