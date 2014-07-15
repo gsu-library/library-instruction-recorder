@@ -590,7 +590,7 @@ if(!class_exists('LIR')) {
                   echo '<td name="Last_Updated" class="LIR-hide">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</td>';
 
                   //Start Options section.
-                  echo '<td name="skip"><a class="detailsLink" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Details</a>';
+                  echo '<td name="skip"><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Details</a>';
 
                   //Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
@@ -599,7 +599,7 @@ if(!class_exists('LIR')) {
                      if($orderBy)   { $extras .= '&orderby='.$orderBy; }
                      if($mode)      { $extras .= $mode; }
 
-                     echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="removeLink" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
+                     echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
                   }
 
                   echo '</td></tr>';
@@ -838,7 +838,7 @@ if(!class_exists('LIR')) {
                      <td>
 
                      <?php
-                     echo '<input type="text" id="classDate" name="class_date" value="';
+                     echo '<input type="text" class="'.self::SLUG.'-date" name="class_date" value="';
 
                      if(!$classAdded && !empty($_POST['class_date'])) {
                         echo $_POST['class_date'];
@@ -1161,11 +1161,11 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>Start Date <em>(optional)</em></th>
-                     <td><input id="reportStartDate" type="text" name="startDate" /></td>
+                     <td><input class="<?= self::SLUG.'-date'; ?>" type="text" name="startDate" /></td>
                   </tr>
                   <tr>
                      <th>End Date <em>(optional)</em></th>
-                     <td><input id="reportEndDate" type="text" name="endDate" /></td>
+                     <td><input class="<?= self::SLUG.'-date'; ?>" type="text" name="endDate" /></td>
                   </tr>
                   <tr>
                      <th>Options</th>
