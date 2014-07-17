@@ -312,7 +312,7 @@ if(!class_exists('LIR')) {
             $query = $wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $delete);
             $class = $wpdb->get_row($query);
 
-            //Check if the user has permissions to remove the class and verify the nonce.
+            // Check if the user has permissions to remove the class and verify the nonce.
             if((current_user_can('manage_options') || $current_user->id == $class->owner_id) && wp_verify_nonce($_GET['n'], self::SLUG.'-delete-'.$delete)) {
                $classRemoved = $wpdb->delete($this->tables['posts'], array('id' => $delete), '%d');
             }
@@ -320,51 +320,27 @@ if(!class_exists('LIR')) {
 
 
          /*
-            Sorting statements.
-         */
-         $orderBy = $_GET['orderby'];
-
-         //Set default order by if non-default view with no order already selected.
-         if(!$orderBy && ($_GET['incomplete'] || $_GET['previous'])) { $orderBy = 'dateDesc'; }
-
-         if($orderBy == 'department')          { $orderQ = 'department_group, course_number, class_start, class_end'; }
-         else if($orderBy == 'departmentDesc') { $orderQ = 'department_group DESC, course_number, class_start, class_end'; }
-         else if($orderBy == 'course')         { $orderQ = 'course_number, class_start, class_end'; }
-         else if($orderBy == 'courseDesc')     { $orderQ = 'course_number DESC, class_start, class_end'; }
-         else if($orderBy == 'date')           { $orderQ = 'class_start, class_end'; }
-         else if($orderBy == 'dateDesc')       { $orderQ = 'class_start DESC, class_end'; }
-         else if($orderBy == 'librarian')      { $orderQ = 'librarian_name, class_start, class_end'; }
-         else if($orderBy == 'librarianDesc')  { $orderQ = 'librarian_name DESC, class_start, class_end'; }
-         else if($orderBy == 'instructor')     { $orderQ = 'instructor_name, class_start, class_end'; }
-         else if($orderBy == 'instructorDesc') { $orderQ = 'instructor_name DESC, class_start, class_end'; }
-         else                                  { $orderQ = 'class_start, class_end'; }
-
-
-         /*
             Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
          */
-         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() <= class_end ORDER BY ".$orderQ);
+         $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() <= class_end ORDER BY class_start, class_end");
          $upcomingCount   = $wpdb->num_rows;
-         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY ".$orderQ);
+         $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY class_start, class_end");
          $incompleteCount = $wpdb->num_rows;
-         $previous        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end ORDER BY ".$orderQ);
+         $previous        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end ORDER BY class_start DESC, class_end");
          $previousCount   = $wpdb->num_rows;
-         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE owner_id = ".$current_user->id." ORDER BY ".$orderQ);
+         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE owner_id = ".$current_user->id." ORDER BY class_start DESC, clasS_end");
          $myclassesCount  = $wpdb->num_rows;
 
-         //Pick list to display and setup for link persistence.
-         $mode = '';
+
+         // Pick list to display and setup for link persistence.
          if($_GET['incomplete']) {
             $result = $incomplete;
-            $mode .= '&incomplete=1';
          }
          else if($_GET['previous']) {
             $result = $previous;
-            $mode .= '&previous=1';
          }
          else if($_GET['myclasses']) {
             $result = $myclasses;
-            $mode .= '&myclasses=1';
          }
          else {
             $result = $upcoming;
@@ -375,9 +351,7 @@ if(!class_exists('LIR')) {
             <h2><?= $this->options['name']; ?> <a href="<?= $baseUrl.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
 
             <?php
-            /*
-               For debugging.
-            */
+            // For debugging.
             if($this->options['debug']) {
                echo '<div id="message" class="error">';
                echo '<p><strong>Time</strong><br />';
@@ -391,12 +365,10 @@ if(!class_exists('LIR')) {
                //echo '<pre>'.print_r($menu, true).'</pre>';
 
                echo '</div>';
-            }
+            } // End debugging.
 
 
-            /*
-               Success or error message for removing a class.
-            */
+            // Success or error message for removing a class.
             if($delete && $classRemoved) {
                echo '<div id="message" class="updated">
                      <p><strong>The class has been removed!</strong></p>
@@ -411,199 +383,120 @@ if(!class_exists('LIR')) {
 
             <ul class="subsubsub">
                <?php
-               //Upcoming classes.
+               // Upcoming classes.
                echo '<li><a href="'.$baseUrl.'"';
                if(!$_GET['incomplete'] && !$_GET['previous'] && !$_GET['myclasses']) { echo ' class="current"'; }
                echo '>Upcoming <span class="count">('.$upcomingCount.')</span></a> |</li>';
-               //Incomplete classes.
+               // Incomplete classes.
                echo '<li><a href="'.$baseUrl.'&incomplete=1"';
                if($_GET['incomplete'] == '1') { echo ' class="current"'; }
                echo '>Incomplete <span class="count">('.$incompleteCount.')</span></a> |</li>';
-               //Previous classes.
+               // Previous classes.
                echo '<li><a href="'.$baseUrl.'&previous=1"';
                if($_GET['previous'] == '1') { echo ' class="current"'; }
                echo '>Previous <span class="count">('.$previousCount.')</span></a> |</li>';
-               //My classes.
+               // My classes.
                echo '<li><a href="'.$baseUrl.'&myclasses=1"';
                if($_GET['myclasses'] == '1') { echo ' class="current"'; }
                echo '>My Classes <span class="count">('.$myclassesCount.')</span></a></li>';
                ?>
             </ul>
 
-            <table class="widefat fixed">
+            <table id="classListingTable" class="widefat">
                <?php
-               $tableHF = '<th class="check-column">&nbsp;</th>';
+               // Table header and footer.
+               $tableHF  = '<tr><th class="check-column">&nbsp;</th><th>Department/Group</th><th>Course #</th><th>Date/Time</th>';
+               $tableHF .= '<th>Primary Librarian</th><th>Instructor</th><th>Options</th><th class="'.self::SLUG.'-hide">Hidden Goodies</th></tr>';
+               echo '<thead>'.$tableHF.'</thead>';
+               echo '<tfoot>'.$tableHF.'</tfoot>';
 
-
-               /*
-                  The following section is used to created the table headers and footers with sorting functionality.
-               */
-               //Department/Group THead & TFoot
-               if($orderBy == 'department') {
-                  $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=departmentDesc'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else if($orderBy == 'departmentDesc') {
-                  $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else {
-                  $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=department'.$mode.'"><span>Department/Group</span><span class="sorting-indicator"></span></a></th>';
-               }
-
-               //Course # THead & TFoot
-               if($orderBy == 'course') {
-                  $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=courseDesc'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else if($orderBy == 'courseDesc') {
-                  $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else {
-                  $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=course'.$mode.'"><span>Course #</span><span class="sorting-indicator"></span></a></th>';
-               }
-
-               //Date/Time THead & TFoot
-               if(!isset($orderBy) || $orderBy == 'date') {
-                  $tableHF .= '<th class="date-column sorted asc"><a href="'.$baseUrl.'&orderby=dateDesc'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else if($orderBy == 'dateDesc') {
-                  $tableHF .= '<th class="date-column sorted desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else {
-                  $tableHF .= '<th class="date-column sortable desc"><a href="'.$baseUrl.'&orderby=date'.$mode.'"><span>Date/Time</span><span class="sorting-indicator"></span></a></th>';
-               }
-
-               //Primary Librarian THead & TFoot
-               if($orderBy == 'librarian') {
-                  $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=librarianDesc'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else if($orderBy == 'librarianDesc') {
-                  $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else {
-                  $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=librarian'.$mode.'"><span>Primary Librarian</span><span class="sorting-indicator"></span></a></th>';
-               }
-
-               //Instructor THead & TFoot
-               if($orderBy == 'instructor') {
-                  $tableHF .= '<th class="sorted asc"><a href="'.$baseUrl.'&orderby=instructorDesc'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else if($orderBy == 'instructorDesc') {
-                  $tableHF .= '<th class="sorted desc"><a href="'.$baseUrl.'&orderby=instructor'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
-               }
-               else {
-                  $tableHF .= '<th class="sortable desc"><a href="'.$baseUrl.'&orderby=instructor'.$mode.'"><span>Instructor</span><span class="sorting-indicator"></span></a></th>';
-               }
-
-               $tableHF .= '<th>Options</th>';
-
-               echo '<thead><tr>'.$tableHF.'</tr></thead>';
-               echo '<tfoot><tr>'.$tableHF.'</tr></tfoot>';
+               // Table body.
                echo '<tbody>';
 
                // If there are no classes to list, display messsage.
                if(empty($result)) {
-                  echo '<tr><td colspan="6"><strong>No classes are currently available in this view.</strong></td></tr>';
+                  echo '<tr><td colspan="8"><strong>No classes are currently available in this view.</strong></td></tr>';
                }
 
-               //Post a table row for each class in $result.
+               // For each class.
                foreach($result as $class) {
+                  echo '<tr class="'.self::SLUG.'-'.$class->id.'"';
+
                   if($class->class_description) {
-                     echo '<tr class="'.self::SLUG.'-'.$class->id.'" title="'.$class->class_description.'">';
+                     echo ' title="'.$class->class_description.'"';
                   }
-                  else {
-                     echo '<tr class="'.self::SLUG.'-'.$class->id.'">';
-                  }
+                  
+                  echo '>'; // Closing the <tr...
 
-                  echo '<th>&nbsp;</th>
-                        <td name="Department-Group">'.$class->department_group.'</td>';
+                  echo '<th>&nbsp;</th>'; // Check-column.
 
-                  //Assign name=skip if not present for details.
+                  echo '<td name="Department-Group">'.$class->department_group.'</td>';
+
                   if($class->course_number) {
                      echo '<td name="Course_Number">'.$class->course_number.'</td>';
                   }
                   else {
-                     echo '<td name="skip">&nbsp;</td>';
+                     echo '<td>&nbsp;</td>';
                   }
 
-                  //Class location, class type, audience for details.
-                  echo '<td name="Class_Location" class="LIR-hide">'.$class->class_location.'</td>
-                        <td name="Class_Type" class="LIR-hide">'.$class->class_type.'</td>
-                        <td name="Audience" class="LIR-hide">'.$class->audience.'</td>';
-
-                  //Display start date & time - end date & time.
+                  // Display start date & time - end date & time.
                   if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
                      echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
                      echo date('g:i A', strtotime($class->class_end)).'</td>';
                   }
-                  else { //If the end time is not on the same day as the start time.
+                  else { // If the end time is not on the same day as the start time.
                      echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A -', strtotime($class->class_start)).'<br />';
                      echo date('n/j/Y (D) g:i A', strtotime($class->class_end)).'</td>';
                   }
 
                   echo '<td name="Primary_Librarian">'.$class->librarian_name.'</td>';
 
-                  //Secondary librarian if present (for details).
-                  if($class->librarian2_name) {
-                     echo '<td name="Secondary_Librarian" class="LIR-hide">'.$class->librarian2_name.'</td>';
-                  }
-
-                  //Instructor name and email.
-                  if($class->instructor_name && $class->instructor_email) {
+                  // Instructor name and email.
+                  if($class->instructor_email) {
                      $mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
-                     echo '<td name="Instructor"><a href="'.$mailto.'">'.$class->instructor_name.'</a></td>';
+                     echo '<td name="Instructor"><a href="'.$mailto.'" title="'.$class->instructor_email.'">'.$class->instructor_name.'</a></td>';
                   }
                   else {
                      echo '<td name="Instructor">'.$class->instructor_name.'</td>';
                   }
 
-                  //Instructor email for details.
-                  if($class->instructor_email) {
-                     echo '<td name="Instructor_Email" class="LIR-hide">'.$class->instructor_email.'</td>';
-                  }
-
-                  //Instructor phone for details.
-                  if($class->instructor_phone) {
-                     echo '<td name="Instructor_Phone" class="LIR-hide">'.$class->instructor_phone.'</td>';
-                  }
-
-                  //Flags.
+                  // Flags.***********************************************
                   $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
                   foreach($flags as $f) {
-                     echo '<td name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'" class="LIR-hide">';
-                     echo $f['value'] ? 'yes' : 'no';
-                     echo '</td>';
+                  //   echo '<td name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'" class="LIR-hide">';
+                  //   echo $f['value'] ? 'yes' : 'no';
+                  //   echo '</td>';
                   }
 
-                  //Attendance for details.
-                  if($class->attendance != NULL) {
-                     echo '<td name="Attendance" class="LIR-hide">'.$class->attendance.'</td>';
-                  }
-                  else {
-                     echo '<td name="Attendance" class="LIR-hide">no attendance recorded</td>';
-                  }
+                  // Start Options section.
+                  echo '<td><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Other Details</a>';
 
-                  //Description for details.
-                  if($class->class_description) {
-                     echo '<td name="Class_Description" class="LIR-hide">'.$class->class_description.'</td>';
-                  }
-
-                  //Last updated for details.
-                  echo '<td name="Last_Updated" class="LIR-hide">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</td>';
-
-                  //Start Options section.
-                  echo '<td name="skip"><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Details</a>';
-
-                  //Edit and delete links for classes.
+                  // Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
-                     $extras = '';
+                     $var = '';
+                     if($_GET['incomplete'])     { $var = '&incomplete=1'; }
+                     else if($_GET['previous'])  { $var = '&previous=1'; }
+                     else if($_GET['myclasses']) { $var = '&myclasses=1'; }
 
-                     if($orderBy)   { $extras .= '&orderby='.$orderBy; }
-                     if($mode)      { $extras .= $mode; }
-
-                     echo '&nbsp;&nbsp;<a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>&nbsp;&nbsp;<a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$extras.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
+                     echo '| <a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a> | ';
+                     echo '<a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$var.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
                   }
+
+                  // Hidden class details.
+                  echo '<td class="'.self::SLUG.'-hide otherDetails">';
+                  if($class->librarian2_name) { echo '<span name="Secondary_Librarian">'.$class->librarian2_name.'</span>'; }
+                  if($class->instructor_email) { echo '<span name="Instructor_Email">'.$class->instructor_email.'</span>'; }
+                  if($class->instructor_phone) { echo '<span name="Instructor_Phone">'.$class->instructor_phone.'</span>'; }
+                  echo '<span name="Class_Location">'.$class->class_location.'</span>';
+                  echo '<span name="Class_Type">'.$class->class_type.'</span>';
+                  echo '<span name="Audience">'.$class->audience.'</span>';
+                  if($class->class_description) { echo '<span name="Class_Description">'.$class->class_description.'</span>'; }
+                  echo '<span name="Attendance">'; echo $class->attendance ? $class->attendance : 'Not Yet Recorded'; echo '</span>';
+                  echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</span>';
+                  echo '</td>';
 
                   echo '</td></tr>';
-               }//End foreach loop.
+               }// End foreach loop for classes.
                ?>
 
                </tbody>
