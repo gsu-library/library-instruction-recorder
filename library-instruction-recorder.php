@@ -409,12 +409,6 @@ if(!class_exists('LIR')) {
                // Table body.
                echo '<tbody>';
 
-               // If there are no classes to list, display messsage.
-               if(empty($result)) {
-                  echo '<tr><td colspan="8"><strong>No classes are currently available in this view.</strong></td></tr>';
-               }
-
-
                // For each class.
                foreach($result as $class) {
                   echo '<tr class="'.self::SLUG.'-'.$class->id.'"';
