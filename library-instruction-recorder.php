@@ -1174,7 +1174,19 @@ if(!class_exists('LIR')) {
                   <tr>
                      <?php
                      foreach($column as $c) {
-                        echo '<th>'.str_replace('_', ' ', $c).'</th>';
+                        // Next two ifs to make the table look a bit better.
+                        if($c == 'class_start' || $c == 'class_end') {
+                           echo '<th style="min-width:80px;">';
+                        }
+                        else if($c == 'flags') {
+                           echo '<th style="min-width:120px;">';
+                        }
+                        else {
+                           echo '<th>';
+                        }
+
+                        echo str_replace('_', ' ', $c);
+                        echo '</th>';
                      }
                      ?>
                   </tr>
