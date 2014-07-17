@@ -65,7 +65,11 @@ jQuery(function($) {
          aTargets: [0, 6]
       }],
       // Initial sorting off (sorted with query instead).
-      aaSorting: []
+      aaSorting: [],
+      // No records message.
+      language: {
+         zeroRecords: 'No classes are currently available in this view.'
+      }
    });
 });
 
