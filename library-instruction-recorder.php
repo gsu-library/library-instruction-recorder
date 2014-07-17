@@ -305,9 +305,7 @@ if(!class_exists('LIR')) {
          $delete = (!empty($_GET['delete'])) ? $_GET['delete'] : NULL;
 
 
-         /*
-            Handle deletion if present.
-         */
+         // Handle deletion if present.
          if($delete) {
             $query = $wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $delete);
             $class = $wpdb->get_row($query);
@@ -319,9 +317,7 @@ if(!class_exists('LIR')) {
          }
 
 
-         /*
-            Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
-         */
+         // Queries to display the listings and also to give the appropriate counts for upcoming, incomplete, and previous classes.
          $upcoming        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() <= class_end ORDER BY class_start, class_end");
          $upcomingCount   = $wpdb->num_rows;
          $incomplete      = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end AND attendance IS NULL ORDER BY class_start, class_end");
@@ -418,6 +414,7 @@ if(!class_exists('LIR')) {
                   echo '<tr><td colspan="8"><strong>No classes are currently available in this view.</strong></td></tr>';
                }
 
+
                // For each class.
                foreach($result as $class) {
                   echo '<tr class="'.self::SLUG.'-'.$class->id.'"';
@@ -460,14 +457,6 @@ if(!class_exists('LIR')) {
                      echo '<td name="Instructor">'.$class->instructor_name.'</td>';
                   }
 
-                  // Flags.***********************************************
-                  $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
-                  foreach($flags as $f) {
-                  //   echo '<td name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'" class="LIR-hide">';
-                  //   echo $f['value'] ? 'yes' : 'no';
-                  //   echo '</td>';
-                  }
-
                   // Start Options section.
                   echo '<td><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Other Details</a>';
 
@@ -491,6 +480,15 @@ if(!class_exists('LIR')) {
                   echo '<span name="Class_Type">'.$class->class_type.'</span>';
                   echo '<span name="Audience">'.$class->audience.'</span>';
                   if($class->class_description) { echo '<span name="Class_Description">'.$class->class_description.'</span>'; }
+
+                  // Flags.
+                  $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
+                  foreach($flags as $f) {
+                     echo '<span name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'">';
+                     echo $f['value'] ? 'yes' : 'no';
+                     echo '</span>';
+                  }
+
                   echo '<span name="Attendance">'; echo $class->attendance ? $class->attendance : 'Not Yet Recorded'; echo '</span>';
                   echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</span>';
                   echo '</td>';
