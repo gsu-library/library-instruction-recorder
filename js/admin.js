@@ -53,8 +53,7 @@ jQuery(function($) {
 
    // DataTables for the report table.
    $('#reportTable').DataTable({
-      scrollX: true,
-      pageLength: 5
+      scrollX: true
    });
 
    // DataTables for the class listing (default page) table.
