@@ -656,6 +656,7 @@ if(!class_exists('LIR')) {
                            echo ' selected="selected"';
                         }
                         // If nothing has been submitted yet or there has been a successful submission select current user.
+                        // !$_GET['edit'] added to stop duplicate selection bug (when editing a class).
                         else if((($classAdded || ($classAdded === NULL)) && ($u->display_name == $user_identity)) && !$_GET['edit']) {
                            echo ' selected="selected"';
                         }
@@ -839,20 +840,12 @@ if(!class_exists('LIR')) {
                   /*
                      Flags.
                   */
-                  // If is a non-submitted edit.
-                  if(($classAdded === NULL) && isset($_GET['edit'])) {
-                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
-                  }
-                  // Else if is a new entry or after a successful submission.
-                  else if(($classAdded === NULL) || $classAdded) {
-                     $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
-                  }
-                  // Else if it is a failed submission we will look at the POST variables.
-
                   $i = 1;
 
                   // Non-submitted edits.
                   if(($classAdded === NULL) && isset($_GET['edit'])) {
+                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
+
                      foreach($flags as $f) {
                         echo '<tr><th>'.$f->name.'</th>';
                         echo '<td><input type="checkbox" name="flagValue'.$i.'" ';
@@ -862,17 +855,19 @@ if(!class_exists('LIR')) {
                         }
 
                         echo ' />';
-                        echo '<input type="hidden" name="flagName'.$i.'" value="'.$f->name.'" /></td></tr>';
+                        echo '<input type="hidden" name="flagName'.$i.'" value="'.esc_attr($f->name).'" /></td></tr>';
                         $i++;
                      }
                   }
                   // For new entries and after successful submissions.
                   else if(($classAdded === NULL) || $classAdded) {
+                     $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
+
                      foreach($flags as $name => $isEnabled) {
                         if($isEnabled) {
                            echo '<tr><th>'.$name.'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$i.'" />';
-                           echo '<input type="hidden" name="flagName'.$i.'" value="'.$name.'" /></td></tr>';
+                           echo '<input type="hidden" name="flagName'.$i.'" value="'.esc_attr($name).'" /></td></tr>';
                            $i++;
                         }
                      }
@@ -880,15 +875,16 @@ if(!class_exists('LIR')) {
                   // For failed submissions (edit or new).
                   // This could potentially be manipulated by fake POST data.
                   else if($classAdded === false) {
+                     echo '<!-- FLAGS (classAdded === false) -->';
                      $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
 
                      foreach($flagNames as $name) {
                         $d = substr($name, -1, 1);
 
                         if(!empty($_POST[$name])) {
-                           echo '<tr><th>'.$name.'</th>';
+                           echo '<tr><th>'.$_POST[$name].'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$d.'"'; if($_POST['flagValue'.$d] == 'on') { echo ' checked="checked"'; } echo ' />';
-                           echo '<input type="hidden" name="flagName'.$d.'" value="'.$name.'" /></td></tr>';
+                           echo '<input type="hidden" name="flagName'.$d.'" value="'.esc_attr($_POST[$name]).'" /></td></tr>';
                         }
                      }
                   }
