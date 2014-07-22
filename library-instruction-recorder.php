@@ -191,7 +191,8 @@ if(!class_exists('LIR')) {
          //Remove scheduled hook.
          wp_clear_scheduled_hook(self::SLUG.'_schedule');
 
-         /*Remove options saved in wp_options table.
+         /*
+         //Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
 
          //Remove custom database tables (post & meta).
@@ -646,12 +647,16 @@ if(!class_exists('LIR')) {
                         if($u->display_name == "admin") { continue; }
                         echo '<option value="'.$u->display_name.'"';
 
-                        // If there was a submission error display submitted name display submitted user.
-                        if((($classAdded === false) && ($u->display_name == $_POST['librarian_name']))) {
+                        // If this is an edit display the previous name.
+                        if($_GET['edit'] && ($u->display_name == $_POST['librarian_name'])) {
+                           echo ' selected="selected"';
+                        }
+                        // If there was a submission error display submitted name.
+                        else if(($classAdded === false) && ($u->display_name == $_POST['librarian_name'])) {
                            echo ' selected="selected"';
                         }
                         // If nothing has been submitted yet or there has been a successful submission select current user.
-                        else if(($classAdded || ($classAdded === NULL)) && ($u->display_name == $user_identity)) {
+                        else if((($classAdded || ($classAdded === NULL)) && ($u->display_name == $user_identity)) && !$_GET['edit']) {
                            echo ' selected="selected"';
                         }
 
