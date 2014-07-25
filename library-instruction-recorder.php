@@ -3,7 +3,7 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 0.2.0
+   Version: 1.0.0
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
@@ -30,8 +30,7 @@
 if(!class_exists('LIR')) {
    /*
       Class: LIR
-         The LIR class which enables the Library Instruction Recorder functionality
-         in WordPress.
+         The LIR class which enables the Library Instruction Recorder functionality in WordPress.
    */
    class LIR {
       // Do not change these variables. The plugin name and slug can be changed on the settings page.
@@ -39,7 +38,8 @@ if(!class_exists('LIR')) {
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
-      const VERSION = '0.2.0';
+      const VERSION = '1.0.0';
+      const MIN_VERSION = '3.6';
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
       const TABLE_FLAGS = '_flags';
@@ -50,7 +50,7 @@ if(!class_exists('LIR')) {
 
       /*
          Constructor: __construct
-            Adds register hooks, actions, and filters to WP upon construction.
+            Adds register hooks, actions, and filters to WP.
       */
       public function __construct() {
          // Registration hooks.
@@ -70,17 +70,20 @@ if(!class_exists('LIR')) {
 
       /*
          Function: init
-            Initializes WordPress options and LIR table names.
+            Initializes WordPress options, LIR table names, and the LIR scheduler. Why is this not
+            in the construtor you ask? So that this stuff is not processed unless it is needed.
 
          Inputs:
-            wpdb   -   Takes the global variable $wpdb by reference to save on duplication.
+            wpdb  -  Takes the global variable $wpdb by reference if it was already initialized.
       */
       private function init(&$wpdb = NULL) {
          // If these values are set then return.
          if(isset($this->options) && isset($this->tables)) { return; }
+         // If not passed call global.
          if($wpdb == NULL) { global $wpdb; }
 
-         // Load options.
+         // Load options, NULL if they do not exist.
+         // NULL is not a good option here.
          $this->options = get_option(self::OPTIONS, NULL);
 
          // Prep table names.
@@ -90,7 +93,7 @@ if(!class_exists('LIR')) {
             'flags' => $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
          );
 
-         // Setup/make sure scheduler is setup. SHOULD THIS GO ELSEWHERE?
+         // Setup/make sure scheduler is setup.
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
             wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
          }
@@ -101,35 +104,40 @@ if(!class_exists('LIR')) {
          Function: activationHook
             Checks to make sure WordPress is compatible, sets up tables, and sets up options.
             ***STATIC FUNCTION***
+
+         See Also:
+            <deactivationHook> and <uninstallHook>
       */
       public static function activationHook() {
          if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         //Make sure compatible WordPress version.
+         // Make sure compatible WordPress version.
          global $wp_version;
-         if(version_compare($wp_version, '3.6', '<')) {
-            wp_die('This plugin requires WordPress version 3.6 or higher.');
+         if(version_compare($wp_version, self::MIN_VERSION, '<')) {
+            wp_die('This plugin requires WordPress version '.self::MIN_VERSION.' or higher.');
          }
 
-         //Create default options for wp_options if they don't already exist.
-         $options = array('debug'     =>   false,
-                          'version'   =>   self::VERSION,
-                          'name'      =>   self::NAME,
-                          'slug'      =>   self::SLUG);
+         // Create default options for wp_options if they don't already exist.
+         $options = array('debug'    =>  false,
+                          'version'  =>  self::VERSION,
+                          'name'     =>  self::NAME,
+                          'slug'     =>  self::SLUG);
 
+         // If the option already exists it will not be overwritten.
+         // Do not autoload the options, they are only used on select admin pages.
          add_option(self::OPTIONS, $options, '', 'no');
+         // Retrieves current options. This is what we can use for version checking.
          $options = get_option(self::OPTIONS);
 
-         //CHECK VERSION NUMBER AND UPDATE DATABASE IF NEEDED
-         //So far not needed.
+         // VERSION CHECKING FOR DATABASE UPDATES
 
-         //Add LIR tables to the database if they do not exist.
+         // Add LIR tables to the database if they do not exist.
          global $wpdb;
-         require_once(ABSPATH.'wp-admin/includes/upgrade.php'); //Required for dbDelta.
+         require_once(ABSPATH.'wp-admin/includes/upgrade.php'); // Required for dbDelta.
 
-         //Post table.
+         // Post table.
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS." (
                       id mediumint(8) UNSIGNED NOT NULL AUTO_INCREMENT,
                       librarian_name varchar(255) NOT NULL,
@@ -154,7 +162,7 @@ if(!class_exists('LIR')) {
 
          dbDelta($query);
 
-         //Meta table.
+         // Meta table.
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_META." (
                       field varchar(255) NOT NULL,
                       value mediumtext NOT NULL,
@@ -163,7 +171,7 @@ if(!class_exists('LIR')) {
 
          dbDelta($query);
 
-         //Flag table.
+         // Flag table.
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS." (
                       posts_id mediumint(8) UNSIGNED NOT NULL,
                       name varchar(255) NOT NULL,
@@ -180,22 +188,25 @@ if(!class_exists('LIR')) {
 
       /*
          Function: deactivationHook
-            Currently used for testing purposes only.
+            Removes LIR scheduler hook.
             ***STATIC FUNCTION***
+
+         See Also:
+            <activationHook> and <uninstallHook>
       */
       public static function deactivationHook() {
          if(!current_user_can('manage_options')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         //Remove scheduled hook.
+         // Remove scheduled hook.
          wp_clear_scheduled_hook(self::SLUG.'_schedule');
 
-         /*
-         //Remove options saved in wp_options table.
+         /* DO NOT UNCOMMENT THIS OUT, IT WILL DELETE ALL OF YOUR DATA
+         // Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
 
-         //Remove custom database tables (post & meta).
+         // Remove custom database tables (post & meta).
          global $wpdb;
          $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS.", ".$wpdb->prefix.self::SLUG.self::TABLE_META.", ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS);
          //*/
@@ -205,20 +216,24 @@ if(!class_exists('LIR')) {
       /*
          Function: uninstallHook
             Used to cleanup items after uninstalling the plugin (databases, wp_options, &c).
+            UNINSTALLING PERMANENTLY REMOVES ALL DATA ASSOCIATED WITH THIS PLUGIN.
             ***STATIC FUNCTION***
+
+         See Also:
+            <activationHook> and <deactivationHook>
       */
       public static function uninstallHook() {
          if(!current_user_can('manage_options') || !defined('WP_UNINSTALL_PLUGIN')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         //We'll make sure the scheduled hook has been removed.
+         // We'll make sure the scheduled hook has been removed.
          wp_clear_scheduled_hook(self::SLUG.'_schedule');
 
-         //Remove options saved in wp_options table.
+         // Remove WP options.
          delete_option(self::OPTIONS);
 
-         //Remove custom database tables (post & meta).
+         // Remove custom database tables.
          global $wpdb;
          $wpdb->query("DROP TABLE IF EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_FLAGS.", ".$wpdb->prefix.self::SLUG.self::TABLE_META.", ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS);
       }
@@ -234,17 +249,20 @@ if(!class_exists('LIR')) {
       public function createMenu() {
          $this->init();
 
-         //Changes language of "add a class" on the submenu when editing a class.
+         // Changes language of "add a class" on the submenu when editing a class.
          $addClassName = $_GET['edit'] ? 'Add/Edit a Class' : 'Add a Class';
 
+         // Adds the main menu item.
          add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
 
-         //Added so the first submenu item does not have the same title as the main menu item.
+         // Added so the first submenu item does not have the same title as the main menu item.
          add_submenu_page(self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts', self::SLUG, array(&$this, 'defaultPage'));
          add_submenu_page(self::SLUG, $addClassName, $addClassName, 'edit_posts', self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
          add_submenu_page(self::SLUG, 'Reports', 'Reports', 'edit_posts', self::SLUG.'-reports', array(&$this, 'reportsPage'));
          add_submenu_page(self::SLUG, 'Fields', 'Fields', 'manage_options', self::SLUG.'-fields', array(&$this, 'fieldsPage'));
          add_submenu_page(self::SLUG, 'Settings', 'Settings', 'manage_options', self::SLUG.'-settings', array(&$this, 'settingsPage'));
+
+         // This doesn't currently work as intended due to the way class updates are processed.
          $this->updateNotificationCount();
       }
 
@@ -252,11 +270,14 @@ if(!class_exists('LIR')) {
       /*
          Function: adminInit
             Registers an option group so that the settings page functions and can be sanitized.
+
+         See Also:
+            <settingsPage> and <sanitizeSettings>
       */
       public function adminInit() {
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
 
-         //COMMENT ON THIS PLEASE***********************************
+         // WHAT IS GOING ON HERE?
          if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') {
             if($_POST['option'] == 'file') {
                $this->generateReport(true);
@@ -267,9 +288,7 @@ if(!class_exists('LIR')) {
 
       /*
          Function: addCssJS
-            Adds custom CSS and JavaScript links to LIR pages.  Adds jQuery, jQueryUI, and jQueryUI dialog
-            & datepicker from the local WordPress scripts repository.  Custom added CSS for for styling jQueryUI
-            dialog and datepicker.
+            Adds custom CSS and JavaScript links to LIR pages (only).
       */
       public function addCssJS() {
          global $parent_file;
@@ -287,12 +306,15 @@ if(!class_exists('LIR')) {
 
       /*
          Function: defaultPage
-            The default page displayed when clicking on the LIR menu item.  This page shows
+            The default page is displayed when clicking on the LIR menu item. This page shows
             a list of upcoming classes while allowing users to see the details, edit entries,
             and delete entries.
 
          Outputs:
             HTML for the default (upcoming classes) page.
+
+         See Also:
+            <addClassPage>
       */
       public function defaultPage() {
          if(!current_user_can('edit_posts')) {
@@ -544,7 +566,7 @@ if(!class_exists('LIR')) {
             }
 
             // Permission checking.
-            if(!current_user_can('manage_options') && $current_user->id != $class->owner_id) {
+            if(!current_user_can('manage_options') && ($current_user->id != $class->owner_id)) {
                array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
                $_POST['submitted'] = NULL; // Ensures the class is never processed for submission.
             }
@@ -704,21 +726,22 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>*Department/Group</th>
-                     <td><select name="department_group">
-                         <option value="">&nbsp;</option>
+                     <td>
+                        <select name="department_group">
+                           <option value="">&nbsp;</option>
 
-                         <?php
-                         foreach($departmentGroup as $x) {
-                            if(!$classAdded && (esc_attr($x) == $_POST['department_group'])) {
-                               echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
-                            }
-                            else {
-                               echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
-                            }
-                         }
-                         ?>
-
-                         </select></td>
+                           <?php
+                           foreach($departmentGroup as $x) {
+                              if(!$classAdded && (esc_attr($x) == $_POST['department_group'])) {
+                                 echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
+                              }
+                              else {
+                                 echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+                              }
+                           }
+                           ?>
+                        </select>
+                     </td>
                   </tr>
                   <tr>
                      <th>Course Number</th>
@@ -911,15 +934,15 @@ if(!class_exists('LIR')) {
 
       /*
          Function: addUpdateClass
-            Adds or updates a class listing in the database.  Handles the sanitation of
-            all of the inputs.
+            Adds or updates a class listing in the database. Handles the sanitation of all of the 
+            inputs.
 
          Inputs:
-            id   -   The id of the entry being updated (if applicable).
+            id  -  The id of the entry being updated (NULL if new entry).
 
          Returns:
-            true   -   True if successfully added or updated an entry.
-            false   -   False if entry was not added/updated.
+            id     -  ID of effected row on success.
+            false  -  False if entry was not added/updated.
       */
       private function addUpdateClass($id = NULL) {
          global $wpdb, $current_user;
@@ -982,9 +1005,7 @@ if(!class_exists('LIR')) {
          if(!$id) { $id = $wpdb->insert_id; }
 
 
-         /*
-            Flag management.
-         */
+         // Flag management.
          $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
          foreach($flagNames as $name) {
             $d = substr($name, -1, 1); // Which flag number are we dealing with?
@@ -1004,10 +1025,14 @@ if(!class_exists('LIR')) {
 
       /*
          Function: reportsPage
-            Allows users to download Excel or CSV data for reporting purposes.
+            Allows users to either download CSV data or view the data in a table for reporting
+            purposes.
 
          Outputs:
             HTML for the reports page.
+
+         See Also:
+            <generateReport>
       */
       public function reportsPage() {
          if(!current_user_can('edit_posts')) {
@@ -1079,10 +1104,16 @@ if(!class_exists('LIR')) {
 
       /*
          Function: generateReport
-            Creates and sends CSV file to user.
+            Creates and sends reporting data and sends it to user as a CSV file or HTML table output.
+
+         Inputs:
+            fileOutput  -  Option for outputting info as a file or HTML table data (defaults to file).
 
          Outputs:
-            CSV report file with respective HTML headers.
+            CSV report file with respective HTML headers or HTML table data.
+
+         See Also:
+            <reportsPage>
       */
       public function generateReport($fileOutput = true) {
          global $wpdb;
@@ -1093,7 +1124,7 @@ if(!class_exists('LIR')) {
                    course_number, attendance, u.display_name as owner, last_updated,
                    u2.display_name as last_updated_by FROM '.$this->tables['posts'].' p JOIN '.$wpdb->users.' u ON p.owner_id = u.ID
                    JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
-         $array = array();
+         $options = array();
 
          // Check if additional parameters have been given.
          if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
@@ -1102,19 +1133,19 @@ if(!class_exists('LIR')) {
 
             if(!empty($_POST['librarian_name'])) {
                $query .= ' librarian_name = %s AND';
-               array_push($array, $_POST['librarian_name']);
+               array_push($options, $_POST['librarian_name']);
                $fileName .= ' '.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
             }
             if(!empty($_POST['startDate'])) {
                $date = date('Y-m-d', strtotime($_POST['startDate']));
                $query .= ' class_start >= %s AND';
-               array_push($array, $date.' 00:00:00');
+               array_push($options, $date.' 00:00:00');
                $fileName .= ' starting '.$date;
             }
             if(!empty($_POST['endDate'])) {
                $date = date('Y-m-d', strtotime($_POST['endDate']));
                $query .= ' class_start <= %s AND';
-               array_push($array, $date.' 23:59:59');
+               array_push($options, $date.' 23:59:59');
                $fileName .= ' ending '.$date;
             }
 
@@ -1122,7 +1153,7 @@ if(!class_exists('LIR')) {
             $query = substr($query, 0, -4);
 
             // Prepare query.
-            $query = $wpdb->prepare($query, $array);
+            $query = $wpdb->prepare($query, $options);
          }
          else {
             $fileName .= ' all';
@@ -1145,9 +1176,10 @@ if(!class_exists('LIR')) {
                array_push($tempA, $f['name'].' = '.$tempS);
             }
 
-            array_push($result[$i], implode(', ', $tempA)); //Boom
+            array_push($result[$i], implode(', ', $tempA)); // Boom
          }
 
+         // Write data out to CSV file.
          if($result && $fileOutput) {
             $f = fopen('php://output', 'w');
             fputcsv($f, $column);
@@ -1167,7 +1199,7 @@ if(!class_exists('LIR')) {
             fclose($f);
             exit;
          }
-         // Do this if output requested is a report.
+         // Write data out as HTML table.
          else if($result) {
             ?>
             <table id="reportTable" class="widefat fixed">
@@ -1226,7 +1258,7 @@ if(!class_exists('LIR')) {
          global $wpdb;
          $this->init($wpdb);
 
-         //Get current fields from database.
+         // Get current fields from database.
          $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
          $classLocation = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_location_values'"));
          $classType = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'class_type_values'"));
@@ -1234,12 +1266,10 @@ if(!class_exists('LIR')) {
          $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
 
 
-         /*
-            Check for form submission and do appropriate action.
-         */
+         // Check for form submission and do appropriate action.
          if(isset($_POST[self::SLUG.'_nonce']) && wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_fields')) {
-            //Add a department / group field to the database.
-            if(!empty($_POST['deptGroupAdd']) && !empty($_POST['deptGroupTB'])) { //CHECK FOR WHITESPACE
+            // Add a department / group field to the database.
+            if(!empty($_POST['deptGroupAdd']) && !empty($_POST['deptGroupTB'])) {
                if($departmentGroup) {
                   array_push($departmentGroup, $_POST['deptGroupTB']);
                   natcasesort($departmentGroup);
@@ -1251,7 +1281,7 @@ if(!class_exists('LIR')) {
                   $wpdb->insert($this->tables['meta'], array('field' => 'department_group_values', 'value' => serialize($departmentGroup)));
                }
             }
-            //Remove a department / group field from the database.
+            // Remove a department / group field from the database.
             else if(!empty($_POST['deptGroupRemove'])) {
                $temp = $_POST['deptGroupSB'] + 1;
 
@@ -1266,8 +1296,8 @@ if(!class_exists('LIR')) {
                   }
                }
             }
-            //Add a class location field to the database.
-            if(!empty($_POST['classLocAdd']) && !empty($_POST['classLocTB'])) { //CHECK FOR WHITESPACE
+            // Add a class location field to the database.
+            if(!empty($_POST['classLocAdd']) && !empty($_POST['classLocTB'])) {
                if($classLocation) {
                   array_push($classLocation, $_POST['classLocTB']);
                   natcasesort($classLocation);
@@ -1279,7 +1309,7 @@ if(!class_exists('LIR')) {
                   $wpdb->insert($this->tables['meta'], array('field' => 'class_location_values', 'value' => serialize($classLocation)));
                }
             }
-            //Remove a class location field from the database.
+            // Remove a class location field from the database.
             else if(!empty($_POST['classLocRemove'])) {
                $temp = $_POST['classLocSB'] + 1;
 
@@ -1294,8 +1324,8 @@ if(!class_exists('LIR')) {
                   }
                }
             }
-            //Add a class type field to the database.
-            if(!empty($_POST['classTypeAdd']) && !empty($_POST['classTypeTB'])) { //CHECK FOR WHITESPACE
+            // Add a class type field to the database.
+            if(!empty($_POST['classTypeAdd']) && !empty($_POST['classTypeTB'])) {
                if($classType) {
                   array_push($classType, $_POST['classTypeTB']);
                   natcasesort($classType);
@@ -1307,7 +1337,7 @@ if(!class_exists('LIR')) {
                   $wpdb->insert($this->tables['meta'], array('field' => 'class_type_values', 'value' => serialize($classType)));
                }
             }
-            //Remove a class type field from the database.
+            // Remove a class type field from the database.
             else if(!empty($_POST['classTypeRemove'])) {
                $temp = $_POST['classTypeSB'] + 1;
 
@@ -1322,8 +1352,8 @@ if(!class_exists('LIR')) {
                   }
                }
             }
-            //Add an audience field to the database.
-            if(!empty($_POST['audienceAdd']) && !empty($_POST['audienceTB'])) { //CHECK FOR WHITESPACE
+            // Add an audience field to the database.
+            if(!empty($_POST['audienceAdd']) && !empty($_POST['audienceTB'])) {
                if($audience) {
                   array_push($audience, $_POST['audienceTB']);
                   natcasesort($audience);
@@ -1335,7 +1365,7 @@ if(!class_exists('LIR')) {
                   $wpdb->insert($this->tables['meta'], array('field' => 'audience_values', 'value' => serialize($audience)));
                }
             }
-            //Remove an audience field from the database.
+            // Remove an audience field from the database.
             else if(!empty($_POST['audienceRemove'])) {
                $temp = $_POST['audienceSB'] + 1;
 
@@ -1350,27 +1380,23 @@ if(!class_exists('LIR')) {
                   }
                }
             }
-            //Adds flag options to the database.
+            // Adds flag options to the database.
             else if(!empty($_POST['flagSave'])) {
-               $flags = array(); //Don't want leftovers...
+               $flags = array(); // Don't want leftovers...
                $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
 
                foreach($flagNames as $name) {
-                  $i = substr($name, -1, 1); //Which flag number are we dealing with?
+                  $i = substr($name, -1, 1); // Which flag number are we dealing with?
 
-                  //Make sure flagName POST var exists.
+                  // Make sure flagName POST var exists.
                   if(!empty($_POST[$name])) {
                      $flags[$_POST[$name]] = $_POST['flagEnabled'.$i];
                   }
                }
 
-
                $wpdb->replace($this->tables['meta'], array('field' => 'flag_info', 'value' => serialize($flags)));
             }
-         }
-         /*
-            End submission of page.
-         */
+         } // End form submission.
 
 
          ?>
@@ -1378,7 +1404,7 @@ if(!class_exists('LIR')) {
             <h2>Fields</h2>
 
             <?php
-            //Added for debugging (if set).
+            // Debugging.
             if($this->options['debug'] && !empty($_POST)) {
                echo '<div id="message" class="error">';
 
@@ -1396,12 +1422,11 @@ if(!class_exists('LIR')) {
                <input name="deptGroupTB" type="text" />
                <input name="deptGroupAdd" type="submit" class="button-secondary" value="Add Dept/Group" /><br /><br />
                <select id="deptGroupSB" name="deptGroupSB" size="<?= count($departmentGroup) < 10 ? count($departmentGroup) : '10'; ?>">
-               <?php
-               $i = 1;  //************************************************
-               foreach($departmentGroup as $i => $x) {
-                  echo '<option value="'.$i.'">'.$x.'</option>';
-               }
-               ?>
+                  <?php
+                  foreach($departmentGroup as $i => $x) {
+                     echo '<option value="'.$i.'">'.$x.'</option>';
+                  }
+                  ?>
                </select><br /><br />
 
                <input name="deptGroupRemove" type="submit" class="button-secondary" value="Remove Dept/Group" />
@@ -1413,12 +1438,11 @@ if(!class_exists('LIR')) {
                <input name="classLocTB" type="text" />
                <input name="classLocAdd" type="submit" class="button-secondary" value="Add Class Location" /><br /><br />
                <select id="classLocSB" name="classLocSB" size="<?= count($classLocation) < 10 ? count($classLocation) : '10'; ?>">
-               <?php
-               $i = 1; //************************************************
-               foreach($classLocation as $i => $x) {
-                  echo '<option value="'.$i.'">'.$x.'</option>';
-               }
-               ?>
+                  <?php
+                  foreach($classLocation as $i => $x) {
+                     echo '<option value="'.$i.'">'.$x.'</option>';
+                  }
+                  ?>
                </select><br /><br />
 
                <input name="classLocRemove" type="submit" class="button-secondary" value="Remove Class Location" />
@@ -1430,12 +1454,11 @@ if(!class_exists('LIR')) {
                <input name="classTypeTB" type="text" />
                <input name="classTypeAdd" type="submit" class="button-secondary" value="Add Class Type" /><br /><br />
                <select id="classTypeSB" name="classTypeSB" size="<?= count($classType) < 10 ? count($classType) : '10'; ?>">
-               <?php
-               $i = 1; //************************************************
-               foreach($classType as $i => $x) {
-                  echo '<option value="'.$i.'">'.$x.'</option>';
-               }
-               ?>
+                  <?php
+                  foreach($classType as $i => $x) {
+                     echo '<option value="'.$i.'">'.$x.'</option>';
+                  }
+                  ?>
                </select><br /><br />
 
                <input name="classTypeRemove" type="submit" class="button-secondary" value="Remove Class Type" />
@@ -1447,12 +1470,11 @@ if(!class_exists('LIR')) {
                <input name="audienceTB" type="text" />
                <input name="audienceAdd" type="submit" class="button-secondary" value="Add Audience" /><br /><br />
                <select id="audienceSB" name="audienceSB" size="<?= count($audience) < 10 ? count($audience) : '10'; ?>">
-               <?php
-               $i = 1; //************************************************
-               foreach($audience as $i => $x) {
-                  echo '<option value="'.$i.'">'.$x.'</option>';
-               }
-               ?>
+                  <?php
+                  foreach($audience as $i => $x) {
+                     echo '<option value="'.$i.'">'.$x.'</option>';
+                  }
+                  ?>
                </select><br /><br />
 
                <input name="audienceRemove" type="submit" class="button-secondary" value="Remove Audience" />
@@ -1490,7 +1512,7 @@ if(!class_exists('LIR')) {
             Controls what shows up on the settings page of this plugin.
 
          Outputs:
-            HTML for adminstration page settings.
+            HTML for LIR settings.
 
          See Also:
             <sanitizeSettings>
@@ -1545,10 +1567,13 @@ if(!class_exists('LIR')) {
             Sanitizes all inputs that are run through the settings page.
 
          Inputs:
-            input   -   Array of options from the LIR settings page.
+            input  -  Array of options from the LIR settings page.
 
          Returns:
-            array   -   Array of sanitized options.
+            array  -  Array of sanitized options.
+
+         See Also:
+            <settingsPage>
       */
       public function sanitizeSettings($input) {
          $input['name'] = sanitize_text_field($input['name']);
@@ -1560,14 +1585,23 @@ if(!class_exists('LIR')) {
 
 
       /*
+         Function: emailReminders
+            Sends out email reminders to users who have a class that does not have the attendance
+            filled out that eneded before today.
 
+         Outputs:
+            HTML emails through WordPress.
+
+         See Also:
+            <setMailToHtml>
       */
       public function emailReminders() {
          global $wpdb;
          $this->init($wpdb);
 
+         add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // So we can send the email in HTML.
+
          $results = $wpdb->get_results('SELECT id, department_group, course_number, owner_id FROM '.$this->tables['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL', OBJECT);
-         add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // So we can send HTML.
 
          foreach($results as $r) {
             $uInfo = $wpdb->get_row('SELECT user_email, display_name FROM '.$wpdb->users.' WHERE ID = '.$r->owner_id, OBJECT);
@@ -1579,7 +1613,7 @@ if(!class_exists('LIR')) {
             $message .= '</a></p>';
             $message .= '<p>Warmly,<br />'.$this->options['slug'].'</p>';
 
-            wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); // FROM NOBODY?
+            wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); // From nobody (may have to look into this later)?
          }
 
          remove_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // Apparently there is a bug and this needs to happen (probably not a bad idea anyway).
@@ -1587,7 +1621,14 @@ if(!class_exists('LIR')) {
 
 
       /*
+         Function: setMailToHtml
+            Changes the email type to text/html.
 
+         Returns:
+            Text/html type.
+
+         See Also:
+            <emailReminders>
       */
       public function setMailToHtml($type) {
          return 'text/html';
@@ -1595,7 +1636,11 @@ if(!class_exists('LIR')) {
 
 
       /*
+         Function: updateNotificationCount
+            Updates the notification count in the menu when called.
 
+         Outputs:
+            Updated WordPress menu content.
       */
       private function updateNotificationCount() {
          global $wpdb, $current_user, $menu;
@@ -1604,15 +1649,19 @@ if(!class_exists('LIR')) {
 
          // Find LIR menu item.
          foreach($menu as $k => $m) {
-            if($m[2] == self::SLUG) { $position = $k; } // I believe $m[2] is the ID of the menu item, hence self::SLUG instead of $this->options['slug'].
+            // I believe $m[2] is the ID of the menu item, hence self::SLUG instead of $this->options['slug'].
+            if($m[2] == self::SLUG) { 
+               $position = $k;
+               break;
+            } 
          }
 
          if($position == NULL) { return; }
 
          // Get count of classes that need to be updated.
          $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->tables['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
-         if(!$count) { return; } // Stop if there are no notifications.
-         $notifications = ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>';
+         // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
+         $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
       }
 
@@ -1622,10 +1671,10 @@ if(!class_exists('LIR')) {
             Test filter function that adds text to the end of content.
 
          Inputs:
-            input      -   A string containing content.
+            input  -  A string containing content.
 
          Returns:
-            string   -   A modified string of content.
+            string  -  A modified string of content.
       */
       public function easterEgg($input = '') {
          return $input . "<p id='Lrrr'><i>I am Lrrr, ruler of the planet Omicron Persei 8!</i></p>";
@@ -1634,8 +1683,4 @@ if(!class_exists('LIR')) {
 
 
    $LIR = new LIR();  // Create object only if class did not already exist.
-}
-else {
-   // DISPLAY ERROR MESSAGE ABOUT CONFLICTING PLUGIN NAME
-   return; // should return to parent script
 }
