@@ -1,7 +1,6 @@
 /*
    Script: js/admin.js
-      JavaScript file used for adding functionality to the LIR
-      plugin.
+      JavaScript file used for adding functionality to the LIR plugin.
       
    About: Plugin
       Library Instruction Recorder
@@ -37,6 +36,7 @@
 */
 jQuery(function($) {
    // Initializes DatePicker for date fields.
+   // The format could potentially be an option at some point.
    $('.LIR-date').datepicker({
       dateFormat: 'm/d/yy'
    });
@@ -73,7 +73,7 @@ jQuery(function($) {
 });
 
 
-// Sets up $j for jQuery no conflict mode.
+// Sets up $j for jQuery no conflict mode for the following functions.
 var $j = jQuery.noConflict();
 
 
@@ -82,7 +82,7 @@ var $j = jQuery.noConflict();
       Displays a prompt for the removal of a class.
    
    Inputs:
-      url   -  A URL to forward the browser to if the confirm box is true.
+      url  -  A URL to forward the browser to if the confirm box is true.
    
    Outputs:
       A confirm box.
@@ -96,10 +96,10 @@ function removeClass(url) {
 
 /*
    Function: showDetails
-      Constructs and shows the details of a class. Uses jQueryUI dialog to handle this.
+      Constructs and shows the details of a class. Uses jQueryUI dialog to handle the display.
    
    Inputs:
-      id -  The ID of the class to display.
+      id  -  The ID of the class to display.
    
    Outputs:
       A jQueryUI dialog box containing class details.
