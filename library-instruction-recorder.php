@@ -240,34 +240,6 @@ if(!class_exists('LIR')) {
 
 
       /*
-         Function: createMenu
-            Creates a menu and submenu on the dashboard for plugin usage and administration.
-
-         See Also:
-            <defaultPage>, <addClassPage>, <reportsPage>, <fieldsPage>, and <settingsPage>
-      */
-      public function createMenu() {
-         $this->init();
-
-         // Changes language of "add a class" on the submenu when editing a class.
-         $addClassName = $_GET['edit'] ? 'Add/Edit a Class' : 'Add a Class';
-
-         // Adds the main menu item.
-         add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
-
-         // Added so the first submenu item does not have the same title as the main menu item.
-         add_submenu_page(self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts', self::SLUG, array(&$this, 'defaultPage'));
-         add_submenu_page(self::SLUG, $addClassName, $addClassName, 'edit_posts', self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
-         add_submenu_page(self::SLUG, 'Reports', 'Reports', 'edit_posts', self::SLUG.'-reports', array(&$this, 'reportsPage'));
-         add_submenu_page(self::SLUG, 'Fields', 'Fields', 'manage_options', self::SLUG.'-fields', array(&$this, 'fieldsPage'));
-         add_submenu_page(self::SLUG, 'Settings', 'Settings', 'manage_options', self::SLUG.'-settings', array(&$this, 'settingsPage'));
-
-         // This doesn't currently work as intended due to the way class updates are processed.
-         $this->updateNotificationCount();
-      }
-
-
-      /*
          Function: adminInit
             Registers an option group so that the settings page functions and can be sanitized.
 
@@ -301,6 +273,34 @@ if(!class_exists('LIR')) {
          wp_enqueue_style(self::SLUG.'-admin-Css', plugins_url('css/admin.css', __FILE__), array(), self::VERSION);
          wp_enqueue_style(self::SLUG.'-jquery-ui-redmond', plugins_url('css/jquery-ui/redmond/jquery-ui.min.css', __FILE__), array(), '1.10.3');
          wp_enqueue_style(self::SLUG.'-dataTables-Css', plugins_url('css/dataTables/css/jquery.dataTables.min.css', __FILE__), array(), '1.10.1');
+      }
+
+
+      /*
+         Function: createMenu
+            Creates a menu and submenu on the dashboard for plugin usage and administration.
+
+         See Also:
+            <defaultPage>, <addClassPage>, <reportsPage>, <fieldsPage>, and <settingsPage>
+      */
+      public function createMenu() {
+         $this->init();
+
+         // Changes language of "add a class" on the submenu when editing a class.
+         $addClassName = $_GET['edit'] ? 'Add/Edit a Class' : 'Add a Class';
+
+         // Adds the main menu item.
+         add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
+
+         // Added so the first submenu item does not have the same title as the main menu item.
+         add_submenu_page(self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts', self::SLUG, array(&$this, 'defaultPage'));
+         add_submenu_page(self::SLUG, $addClassName, $addClassName, 'edit_posts', self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
+         add_submenu_page(self::SLUG, 'Reports', 'Reports', 'edit_posts', self::SLUG.'-reports', array(&$this, 'reportsPage'));
+         add_submenu_page(self::SLUG, 'Fields', 'Fields', 'manage_options', self::SLUG.'-fields', array(&$this, 'fieldsPage'));
+         add_submenu_page(self::SLUG, 'Settings', 'Settings', 'manage_options', self::SLUG.'-settings', array(&$this, 'settingsPage'));
+
+         // This doesn't currently work as intended due to the way class updates are processed.
+         $this->updateNotificationCount();
       }
 
 
