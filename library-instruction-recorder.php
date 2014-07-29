@@ -1202,7 +1202,7 @@ if(!class_exists('LIR')) {
          // Write data out as HTML table.
          else if($result) {
             ?>
-            <table id="reportTable" class="widefat fixed">
+            <table id="reportTable" class="widefat">
                <thead>
                   <tr>
                      <?php
