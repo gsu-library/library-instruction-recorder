@@ -290,10 +290,10 @@ if(!class_exists('LIR')) {
          $addClassName = $_GET['edit'] ? 'Add/Edit a Class' : 'Add a Class';
 
          // Adds the main menu item.
-         add_menu_page('', $this->options['slug'], 'edit_posts', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
+         add_menu_page('', $this->options['slug'], 'read', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
 
          // Added so the first submenu item does not have the same title as the main menu item.
-         add_submenu_page(self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'edit_posts', self::SLUG, array(&$this, 'defaultPage'));
+         add_submenu_page(self::SLUG, 'Upcoming Classes', 'Upcoming Classes', 'read', self::SLUG, array(&$this, 'defaultPage'));
          add_submenu_page(self::SLUG, $addClassName, $addClassName, 'edit_posts', self::SLUG.'-add-a-class', array(&$this, 'addClassPage'));
          add_submenu_page(self::SLUG, 'Reports', 'Reports', 'edit_posts', self::SLUG.'-reports', array(&$this, 'reportsPage'));
          add_submenu_page(self::SLUG, 'Fields', 'Fields', 'manage_options', self::SLUG.'-fields', array(&$this, 'fieldsPage'));
@@ -317,10 +317,12 @@ if(!class_exists('LIR')) {
             <addClassPage>
       */
       public function defaultPage() {
-         if(!current_user_can('edit_posts')) {
+         if(!current_user_can('read')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
+         // If user is only a subscriber.
+         $subscriber = current_user_can('edit_posts') ? false : true;
          global $wpdb, $current_user;
          $this->init($wpdb);
          get_currentuserinfo();
@@ -367,7 +369,12 @@ if(!class_exists('LIR')) {
 
          ?>
          <div class="wrap">
-            <h2><?= $this->options['name']; ?> <a href="<?= $baseUrl.'-add-a-class'; ?>" class="add-new-h2">Add a Class</a></h2>
+            <h2>
+               <?php
+               echo $this->options['name'];
+               if(!$subscriber) { echo '<a href="'.$baseUrl.'-add-a-class" class="add-new-h2">Add a Class</a>'; }
+               ?>
+            </h2>
 
             <?php
             // For debugging.
@@ -413,11 +420,13 @@ if(!class_exists('LIR')) {
                // Previous classes.
                echo '<li><a href="'.$baseUrl.'&previous=1"';
                if($_GET['previous'] == '1') { echo ' class="current"'; }
-               echo '>Previous <span class="count">('.$previousCount.')</span></a> |</li>';
-               // My classes.
-               echo '<li><a href="'.$baseUrl.'&myclasses=1"';
-               if($_GET['myclasses'] == '1') { echo ' class="current"'; }
-               echo '>My Classes <span class="count">('.$myclassesCount.')</span></a></li>';
+               echo '>Previous <span class="count">('.$previousCount.')</span></a></li>';
+               // My classes (if not a subscriber).
+               if(!$subscriber) {
+                  echo '<li>| <a href="'.$baseUrl.'&myclasses=1"';
+                  if($_GET['myclasses'] == '1') { echo ' class="current"'; }
+                  echo '>My Classes <span class="count">('.$myclassesCount.')</span></a></li>';
+               }
                ?>
             </ul>
 
