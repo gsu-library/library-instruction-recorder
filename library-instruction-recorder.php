@@ -92,11 +92,6 @@ if(!class_exists('LIR')) {
             'meta'  => $wpdb->prefix.self::SLUG.self::TABLE_META,
             'flags' => $wpdb->prefix.self::SLUG.self::TABLE_FLAGS
          );
-
-         // Setup/make sure scheduler is setup.
-         if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
-         }
       }
 
 
@@ -248,6 +243,11 @@ if(!class_exists('LIR')) {
       */
       public function adminInit() {
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
+
+         // Setup/make sure scheduler is setup.
+         if(!wp_next_scheduled(self::SLUG.'_schedule')) {
+            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
+         }
 
          // WHAT IS GOING ON HERE?
          if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') {
