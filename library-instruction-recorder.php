@@ -1274,9 +1274,10 @@ if(!class_exists('LIR')) {
          $audience = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'audience_values'"));
          $flags = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'flag_info'"));
 
-
          // Check for form submission and do appropriate action.
          if(isset($_POST[self::SLUG.'_nonce']) && wp_verify_nonce($_POST[self::SLUG.'_nonce'], self::SLUG.'_fields')) {
+            $_POST = array_map("trim", $_POST); // Added so that blank fields cannot be saved.
+
             // Add a department / group field to the database.
             if(!empty($_POST['deptGroupAdd']) && !empty($_POST['deptGroupTB'])) {
                if($departmentGroup) {
