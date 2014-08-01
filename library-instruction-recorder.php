@@ -62,7 +62,7 @@ if(!class_exists('LIR')) {
          add_action('admin_menu', array(&$this, 'createMenu'));
          add_action('admin_init', array(&$this, 'adminInit'));
          add_action('admin_enqueue_scripts', array(&$this, 'addCssJS'));
-         add_action('admin_post_'.self::SLUG.'DL', array(&$this, 'generateReport'));
+         // A hook needs to be created to add this to the scheduler (weird, I know).
          add_action(self::SLUG.'_schedule', array(&$this, 'emailReminders'));
          //add_filter('the_content', array(&$this, 'easterEgg')); // For testing purposes.
       }
@@ -249,8 +249,11 @@ if(!class_exists('LIR')) {
             wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
          }
 
-         // WHAT IS GOING ON HERE?
-         if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report') {
+         // Generates and sends CSV file (before standard headers are sent).
+         // It is worth noting that the admin_post_{action_name} hook only works (haven't tested it yet)
+         // if being submitted to the /wp-admin/admin-post.php page. That doesn't work well for this
+         // implementation since the report can be generated as a file or on the reports page.
+         if(isset($_POST['action']) && ($_POST['action'] == self::SLUG.'_download_report')) {
             if($_POST['option'] == 'file') {
                $this->generateReport(true);
             }
@@ -1095,14 +1098,14 @@ if(!class_exists('LIR')) {
                </table>
 
                <p class="submit">
-                  <input type="hidden" name="action" value="LIR_download_report" />
+                  <input type="hidden" name="action" value="<?= self::SLUG; ?>_download_report" />
                   <input type="submit" name="submit" class="button-primary" value="Gimme That Report!" />&nbsp;&nbsp;
                   <input style="cursor: pointer;" type="reset" value="Reset Form" />
                </p>
             </form>
 
             <?php
-            if(isset($_POST['action']) && $_POST['action'] == 'LIR_download_report' && $_POST['option'] == 'report') {
+            if(isset($_POST['action']) && ($_POST['action'] == self::SLUG.'_download_report') && ($_POST['option'] == 'report')) {
                $this->generateReport(false);
             }
             ?>
