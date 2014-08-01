@@ -1127,7 +1127,7 @@ if(!class_exists('LIR')) {
          See Also:
             <reportsPage>
       */
-      public function generateReport($fileOutput = true) {
+      private function generateReport($fileOutput = true) {
          global $wpdb;
          $this->init($wpdb);
          $fileName = $this->options['slug'];
