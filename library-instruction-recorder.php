@@ -44,6 +44,12 @@ if(!class_exists('LIR')) {
       const TABLE_META = '_meta';
       const TABLE_FLAGS = '_flags';
       const SCHEDULE_TIME = '01:00:00';
+      private static $defaultOptions = array(
+         'debug'    =>  false,
+         'version'  =>  self::VERSION,
+         'name'     =>  self::NAME,
+         'slug'     =>  self::SLUG
+      );
       private $options;
       private $tables;
 
@@ -84,7 +90,8 @@ if(!class_exists('LIR')) {
 
          // Load options, NULL if they do not exist.
          // NULL is not a good option here.
-         $this->options = get_option(self::OPTIONS, NULL);
+         // $this->options = get_option(self::OPTIONS, NULL);
+         $this->options = get_option(self::OPTIONS, self::$defaultOptions);
 
          // Prep table names.
          $this->tables = array(
@@ -115,14 +122,15 @@ if(!class_exists('LIR')) {
          }
 
          // Create default options for wp_options if they don't already exist.
-         $options = array('debug'    =>  false,
+         /*$options = array('debug'    =>  false,
                           'version'  =>  self::VERSION,
                           'name'     =>  self::NAME,
-                          'slug'     =>  self::SLUG);
+                          'slug'     =>  self::SLUG);*/
 
          // If the option already exists it will not be overwritten.
          // Do not autoload the options, they are only used on select admin pages.
-         add_option(self::OPTIONS, $options, '', 'no');
+         //add_option(self::OPTIONS, $options, '', 'no');
+         add_option(self::OPTIONS, self::$defaultOptions, '', 'no');
          // Retrieves current options. This is what we can use for version checking.
          $options = get_option(self::OPTIONS);
 
