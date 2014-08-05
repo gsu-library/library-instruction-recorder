@@ -1698,7 +1698,7 @@ if(!class_exists('LIR')) {
             string  -  A modified string of content.
       */
       public function easterEgg($input = '') {
-         return $input . "<p id='Lrrr'><i>I am Lrrr, ruler of the planet Omicron Persei 8!</i></p>";
+         return $input . "<p style='text-align:right;'><i>I am Lrrr, ruler of the planet Omicron Persei 8!</i></p>";
       }
    }
 
