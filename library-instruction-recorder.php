@@ -45,10 +45,12 @@ if(!class_exists('LIR')) {
       const TABLE_FLAGS = '_flags';
       const SCHEDULE_TIME = '01:00:00';
       private static $defaultOptions = array(
-         'debug'    =>  false,
-         'version'  =>  self::VERSION,
-         'name'     =>  self::NAME,
-         'slug'     =>  self::SLUG
+         'debug'           =>  false,
+         'version'         =>  self::VERSION,
+         'name'            =>  self::NAME,
+         'slug'            =>  self::SLUG,
+         'intervalLength'  =>  15,
+         'intervalAmount'  =>  16
       );
       private $options;
       private $tables;
@@ -1569,7 +1571,15 @@ if(!class_exists('LIR')) {
                      <td><input type="text" name="<?= self::OPTIONS.'[slug]'; ?>" value="<?= $this->options['slug']; ?>" /></td>
                   </tr>
                   <tr>
-                     <th scope="row">Debugging</th>
+                     <th scope="row">Class Length Interval<br /><span class="smaller">(in minutes)</span></th>
+                     <td><input type="number" name="<?= self::OPTIONS.'[intervalLength]'; ?>" value="<?= $this->options['intervalLength'] ?>" /></td>
+                  </tr>
+                  <tr>
+                     <th scope="row">Number of Intervals</th>
+                     <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= $this->options['intervalAmount'] ?>" /></td>
+                  </tr>
+                  <tr>
+                     <th scope="row">Debugging<br /><em class="warning smaller">(This option produces a lot of output.)</em></th>
                      <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], 'on'); ?> /> Enabled</td>
                   </tr>
                </table>
@@ -1600,6 +1610,8 @@ if(!class_exists('LIR')) {
          $input['name'] = sanitize_text_field($input['name']);
          $input['slug'] = sanitize_text_field($input['slug']);
          $input['debug'] = ($input['debug'] == 'on') ? 'on' : '';
+         $input['intervalLength'] = absint($input['intervalLength']);
+         $input['intervalAmount'] = absint($input['intervalAmount']);
 
          return $input;
       }
