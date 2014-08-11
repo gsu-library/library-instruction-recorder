@@ -78,3 +78,15 @@
 #audienceSB {
    height: auto;
 }
+
+
+/*
+   Settings
+*/
+.smaller {
+   font-size: 85%;
+}
+
+.warning {
+   color: red;
+}
