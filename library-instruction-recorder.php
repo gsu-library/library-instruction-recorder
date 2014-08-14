@@ -312,7 +312,7 @@ if(!class_exists('LIR')) {
          Function: defaultPage
             The default page is displayed when clicking on the LIR menu item. This page shows
             a list of upcoming classes while allowing users to see the details, edit entries,
-            and delete entries.
+            copy entries, and delete entries.
 
          Outputs:
             HTML for the default (upcoming classes) page.
@@ -491,7 +491,9 @@ if(!class_exists('LIR')) {
                   echo '<td><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Other Details</a>';
 
                   // Copy a class.
-                  echo '| <a href="'.$baseUrl.'-add-a-class&copy='.$class->id.'">Copy</a>';
+                  if(current_user_can('edit_posts')) {
+                     echo '| <a href="'.$baseUrl.'-add-a-class&copy='.$class->id.'">Copy</a>';
+                  }
 
                   // Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
@@ -540,7 +542,7 @@ if(!class_exists('LIR')) {
       /*
          Function: addClassPage
             The add a class page allows users to add a class to the instruction recorder. This
-            page is also used for editing existing entries (from the upcoming classes page).
+            page is also used for editing and copying existing entries.
 
          Outputs:
             HTML for the add a class page.
@@ -615,7 +617,8 @@ if(!class_exists('LIR')) {
 
             // Go to function to insert data into database.
             if(empty($error)) { $classAdded = $this->addUpdateClass($_POST['edit']); }
-            if($classAdded === 0) { $classAdded = true; } //This will make things easier from here on down.
+            // This will make things easier from here on down, although should not happen.
+            if($classAdded === 0) { $classAdded = true; }
             // If update fails with no other errors.
             if(!$classAdded && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
             // If insert fails with no other errors.
@@ -652,7 +655,7 @@ if(!class_exists('LIR')) {
                echo '<p>Last Query: '.$wpdb->last_query.'</p>';
 
                echo '<p>Class Added: ';
-               if($classAdded) { echo 'true'; }
+               if($classAdded) { echo $classAdded; }
                else if($classAdded === NULL) { echo 'NULL'; }
                else if($classAdded === false) { echo 'false'; }
                else { echo 'who knows'; }
