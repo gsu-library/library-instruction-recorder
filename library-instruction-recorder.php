@@ -90,9 +90,7 @@ if(!class_exists('LIR')) {
          // If not passed call global.
          if($wpdb == NULL) { global $wpdb; }
 
-         // Load options, NULL if they do not exist.
-         // NULL is not a good option here.
-         // $this->options = get_option(self::OPTIONS, NULL);
+         // Load options, self::$defaultOptions if they do not exist.
          $this->options = get_option(self::OPTIONS, self::$defaultOptions);
 
          // Prep table names.
@@ -123,15 +121,8 @@ if(!class_exists('LIR')) {
             wp_die('This plugin requires WordPress version '.self::MIN_VERSION.' or higher.');
          }
 
-         // Create default options for wp_options if they don't already exist.
-         /*$options = array('debug'    =>  false,
-                          'version'  =>  self::VERSION,
-                          'name'     =>  self::NAME,
-                          'slug'     =>  self::SLUG);*/
-
          // If the option already exists it will not be overwritten.
          // Do not autoload the options, they are only used on select admin pages.
-         //add_option(self::OPTIONS, $options, '', 'no');
          add_option(self::OPTIONS, self::$defaultOptions, '', 'no');
          // Retrieves current options. This is what we can use for version checking.
          $options = get_option(self::OPTIONS);
@@ -207,7 +198,7 @@ if(!class_exists('LIR')) {
          // Remove scheduled hook.
          wp_clear_scheduled_hook(self::SLUG.'_schedule');
 
-         /* DO NOT UNCOMMENT THIS OUT, IT WILL DELETE ALL OF YOUR DATA
+         /* DO NOT UNCOMMENT THIS, IT WILL DELETE ALL OF YOUR DATA
          // Remove options saved in wp_options table.
          delete_option(self::OPTIONS);
 
@@ -498,6 +489,9 @@ if(!class_exists('LIR')) {
 
                   // Start Options section.
                   echo '<td><a class="stopLinkFire" href="#" onclick="showDetails(\''.self::SLUG.'-'.$class->id.'\')">Other Details</a>';
+
+                  // Copy a class.
+                  echo '| <a href="'.$baseUrl.'-add-a-class&copy='.$class->id.'">Copy</a>';
 
                   // Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
@@ -1584,7 +1578,7 @@ if(!class_exists('LIR')) {
                      <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= $this->options['intervalAmount'] ?>" /></td>
                   </tr>
                   <tr>
-                     <th scope="row">Debugging<br /><em class="warning smaller">(This option produces a lot of output.)</em></th>
+                     <th scope="row">Debugging<br /><em class="warning smaller">(this option produces a lot of output)</em></th>
                      <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], 'on'); ?> /> Enabled</td>
                   </tr>
                </table>
@@ -1715,7 +1709,7 @@ if(!class_exists('LIR')) {
             string  -  A modified string of content.
       */
       public function easterEgg($input = '') {
-         return $input . "<p style='text-align:right;'><i>I am Lrrr, ruler of the planet Omicron Persei 8!</i></p>";
+         return $input . "<p style='text-align:right;'><em>I am Lrrr, ruler of the planet Omicron Persei 8!</em></p>";
       }
    }
 
