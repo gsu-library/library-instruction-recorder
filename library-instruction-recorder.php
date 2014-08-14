@@ -587,6 +587,15 @@ if(!class_exists('LIR')) {
                $_POST['submitted'] = NULL; // Ensures the class is never processed for submission.
             }
          }
+         // If this is a copy class request.
+         else if ($_GET['copy']) {
+            $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['copy']));
+
+            // Save DB to POST so fields can be populated from same pool during editing and failed submissions.
+            foreach($class as $x => $y) {
+               $_POST[$x] = $y;
+            }
+         }
 
 
          // Submission handling. **This should be done before headers are sent.**
@@ -619,7 +628,7 @@ if(!class_exists('LIR')) {
 
             <?php
             // Added for debugging (if set).
-            if($this->options['debug'] && (!empty($_POST) || !empty($debug))) {
+            if($this->options['debug']) {
                echo '<div id="message" class="error">';
 
                if(!empty($_POST)) {
@@ -641,6 +650,14 @@ if(!class_exists('LIR')) {
                }
 
                echo '<p>Last Query: '.$wpdb->last_query.'</p>';
+
+               echo '<p>Class Added: ';
+               if($classAdded) { echo 'true'; }
+               else if($classAdded === NULL) { echo 'NULL'; }
+               else if($classAdded === false) { echo 'false'; }
+               else { echo 'who knows'; }
+               echo '</p>';
+
                echo '</div>';
             }
             // End debugging.
@@ -661,13 +678,13 @@ if(!class_exists('LIR')) {
             // Message if class was added.
             if($classAdded && !$_POST['edit']) {
                echo '<div id="message" class="updated">
-                  <p><strong>The class has been added!</strong> Need to <a href="'.$baseUrl.'&edit='.$classAdded.'">edit it?</a> Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
+                  <p><strong>The class has been added!</strong> Need to <a href="'.$baseUrl.'&edit='.$classAdded.'">edit it</a>? <a href="'.$baseUrl.'&copy='.$classAdded.'">Copy it</a>? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
                </div>';
             }
             // Message if class was updated.
             else if($classAdded && $_POST['edit']) {
                echo '<div id="message" class="updated">
-                  <p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
+                  <p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? <a href="'.$baseUrl.'&copy='.$_POST['edit'].'">Copy it</a>? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
                </div>';
             }
             ?>
@@ -683,23 +700,26 @@ if(!class_exists('LIR')) {
 
                      foreach($user as $u) {
                         if($u->display_name == "admin") { continue; }
-                        echo '<option value="'.$u->display_name.'"';
+                        echo '<option';
 
-                        // If this is an edit display the previous name.
-                        if($_GET['edit'] && ($u->display_name == $_POST['librarian_name'])) {
+                        // If nothing has been submitted and it's a new submission select current user.
+                        if(($classAdded === NULL) && !($_GET['edit'] || $_GET['copy']) && ($u->display_name == $user_identity)) {
+                           echo ' selected="selected"';
+                        }
+                        // If this is an edit or copy that hasn't been submitted display the previous name.
+                        else if(($classAdded === NULL) && ($_GET['edit'] || $_GET['copy']) && ($u->display_name == $_POST['librarian_name'])) {
                            echo ' selected="selected"';
                         }
                         // If there was a submission error display submitted name.
                         else if(($classAdded === false) && ($u->display_name == $_POST['librarian_name'])) {
                            echo ' selected="selected"';
                         }
-                        // If nothing has been submitted yet or there has been a successful submission select current user.
-                        // !$_GET['edit'] added to stop duplicate selection bug (when editing a class).
-                        else if((($classAdded || ($classAdded === NULL)) && ($u->display_name == $user_identity)) && !$_GET['edit']) {
+                        // After a successful submission.
+                        else if($classAdded && ($u->display_name == $user_identity)) {
                            echo ' selected="selected"';
                         }
 
-                        echo '>'.$u->display_name.'</option>';
+                        echo ' value="'.$u->display_name.'">'.$u->display_name.'</option>';
                      }
                      ?>
 
@@ -887,8 +907,9 @@ if(!class_exists('LIR')) {
                   $i = 1;
 
                   // Non-submitted edits.
-                  if(($classAdded === NULL) && isset($_GET['edit'])) {
-                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $_GET['edit']), OBJECT);
+                  if(($classAdded === NULL) && (isset($_GET['edit']) || isset($_GET['copy']))) {
+                     $tempID = isset($_GET['edit']) ? $_GET['edit'] : $_GET['copy'];
+                     $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $tempID, OBJECT));
 
                      foreach($flags as $f) {
                         echo '<tr><th>'.$f->name.'</th>';
@@ -916,7 +937,7 @@ if(!class_exists('LIR')) {
                         }
                      }
                   }
-                  // For failed submissions (edit or new).
+                  // For failed submissions.
                   // This could potentially be manipulated by fake POST data.
                   else if($classAdded === false) {
                      echo '<!-- FLAGS (classAdded === false) -->';
