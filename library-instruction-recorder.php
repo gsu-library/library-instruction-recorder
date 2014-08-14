@@ -492,7 +492,7 @@ if(!class_exists('LIR')) {
 
                   // Copy a class.
                   if(current_user_can('edit_posts')) {
-                     echo '| <a href="'.$baseUrl.'-add-a-class&copy='.$class->id.'">Copy</a>';
+                     echo ' | <a href="'.$baseUrl.'-add-a-class&copy='.$class->id.'">Copy</a>';
                   }
 
                   // Edit and delete links for classes.
@@ -502,8 +502,8 @@ if(!class_exists('LIR')) {
                      else if($_GET['previous'])  { $var = '&previous=1'; }
                      else if($_GET['myclasses']) { $var = '&myclasses=1'; }
 
-                     echo '| <a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a> | ';
-                     echo '<a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$var.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
+                     echo ' | <a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>';
+                     echo ' | <a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$var.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
                   }
 
                   // Hidden class details.
