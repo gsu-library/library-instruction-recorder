@@ -447,7 +447,7 @@ if(!class_exists('LIR')) {
                <?php
                // Table header and footer.
                $tableHF  = '<tr><th class="check-column">&nbsp;</th><th>Department/Group</th><th>Course #</th><th>Date/Time</th>';
-               $tableHF .= '<th>Primary Librarian</th><th>Instructor</th><th>Options</th><th class="'.self::SLUG.'-hide">Hidden Goodies</th></tr>';
+               $tableHF .= '<th>Primary Librarian</th><th>Instructor</th><th>Options</th><th class="hide">Hidden Goodies</th></tr>';
                echo '<thead>'.$tableHF.'</thead>';
                echo '<tfoot>'.$tableHF.'</tfoot>';
 
@@ -477,7 +477,7 @@ if(!class_exists('LIR')) {
 
                   // Display start date & time - end date & time.
                   if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
-                     echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
+                     echo '<td name="Date-Time"><span class="hide">'.$class->class_start.' - '.$class->class_end.'</span>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
                      echo date('g:i A', strtotime($class->class_end)).'</td>';
                   }
                   else { // If the end time is not on the same day as the start time.
@@ -511,7 +511,7 @@ if(!class_exists('LIR')) {
                   }
 
                   // Hidden class details.
-                  echo '<td class="'.self::SLUG.'-hide otherDetails">';
+                  echo '<td class="hide otherDetails">';
                   if($class->librarian2_name) { echo '<span name="Secondary_Librarian">'.$class->librarian2_name.'</span>'; }
                   if($class->instructor_email) { echo '<span name="Instructor_Email">'.$class->instructor_email.'</span>'; }
                   if($class->instructor_phone) { echo '<span name="Instructor_Phone">'.$class->instructor_phone.'</span>'; }
@@ -812,14 +812,19 @@ if(!class_exists('LIR')) {
                      <td><input type="text" name="class_time" value="<?= $time; ?>" /> <label>*Length</label>
                         <select name="class_length">
                            <option value="0">&nbsp;</option>
-                           <option value="15" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '15')) echo 'selected="selected"'; ?>>15 minutes</option>
-                           <option value="30" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '30')) echo 'selected="selected"'; ?>>30 minutes</option>
-                           <option value="45" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '45')) echo 'selected="selected"'; ?>>45 minutes</option>
-                           <option value="60" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '60')) echo 'selected="selected"'; ?>>1 hour</option>
-                           <option value="75" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '75')) echo 'selected="selected"'; ?>>1 hour 15 minutes</option>
-                           <option value="90" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '90')) echo 'selected="selected"'; ?>>1 hour 30 minutes</option>
-                           <option value="105" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '105')) echo 'selected="selected"'; ?>>1 hour 45 minutes</option>
-                           <option value="120" <?php if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == '120')) echo 'selected="selected"'; ?>>2 hours</option>
+                           <?php
+                           for($i = 1; $i <= $this->options['intervalAmount']; $i++) {
+                              $time = $this->options['intervalLength'] * $i;
+
+                              echo '<option';
+                              // Pre-select the option box if this is not a new class.
+                              if(!$classAdded && !empty($_POST['class_length']) && ($_POST['class_length'] == $time)) { echo ' selected="selected"'; }
+                              echo ' value="'.$time.'">';
+                              if(floor($time / 60)) { echo floor($time / 60) == 1 ? '1 hour ' : floor($time / 60). ' hours '; }
+                              if($time % 60) { echo  ($time % 60) == 1 ? '1 minute' : ($time % 60).' minutes'; }
+                              echo '</option>';
+                           }
+                           ?>
                         </select>
                      </td>
                   </tr>
