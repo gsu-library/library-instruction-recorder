@@ -1594,7 +1594,7 @@ if(!class_exists('LIR')) {
                      <td><input type="text" name="<?= self::OPTIONS.'[slug]'; ?>" value="<?= $this->options['slug']; ?>" /></td>
                   </tr>
                   <tr>
-                     <th scope="row">Class Length Interval<br /><span class="smaller">(in minutes)</span></th>
+                     <th scope="row">Class Length Interval<br /><em class="smaller">(in minutes)</em></th>
                      <td><input type="number" name="<?= self::OPTIONS.'[intervalLength]'; ?>" value="<?= $this->options['intervalLength'] ?>" /></td>
                   </tr>
                   <tr>
@@ -1602,7 +1602,7 @@ if(!class_exists('LIR')) {
                      <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= $this->options['intervalAmount'] ?>" /></td>
                   </tr>
                   <tr>
-                     <th scope="row">Debugging<br /><em class="warning smaller">(this option produces a lot of output)</em></th>
+                     <th scope="row">Debugging<br /><em class="warning smaller">(this produces a lot of output)</em></th>
                      <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], 'on'); ?> /> Enabled</td>
                   </tr>
                </table>
