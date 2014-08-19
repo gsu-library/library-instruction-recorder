@@ -376,7 +376,7 @@ if(!class_exists('LIR')) {
             <h2>
                <?php
                echo $this->options['name'];
-               if(!$subscriber) { echo '<a href="'.$baseUrl.'-add-a-class" class="add-new-h2">Add a Class</a>'; }
+               if(!$subscriber) { echo ' <a href="'.$baseUrl.'-add-a-class" class="add-new-h2">Add a Class</a>'; }
                ?>
             </h2>
 
