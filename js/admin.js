@@ -1,7 +1,6 @@
 /*
    Script: js/admin.js
-      JavaScript file used for adding functionality to the LIR
-      plugin.
+      JavaScript file used for adding functionality to the LIR plugin.
       
    About: Plugin
       Library Instruction Recorder
@@ -37,6 +36,7 @@
 */
 jQuery(function($) {
    // Initializes DatePicker for date fields.
+   // The format could potentially be an option at some point.
    $('.LIR-date').datepicker({
       dateFormat: 'm/d/yy'
    });
@@ -53,13 +53,27 @@ jQuery(function($) {
 
    // DataTables for the report table.
    $('#reportTable').DataTable({
-      scrollX: true,
-      pageLength: 5
+      scrollX: true
+   });
+
+   // DataTables for the class listing (default page) table.
+   $('#classListingTable').DataTable({
+      // Disable sorting of first column.
+      aoColumnDefs: [{
+         bSortable: false,
+         aTargets: [0, 6]
+      }],
+      // Initial sorting off (sorted with query instead).
+      aaSorting: [],
+      // No records message.
+      language: {
+         zeroRecords: 'No classes are currently available in this view.'
+      }
    });
 });
 
 
-// Sets up $j for jQuery no conflict mode.
+// Sets up $j for jQuery no conflict mode for the following functions.
 var $j = jQuery.noConflict();
 
 
@@ -68,15 +82,13 @@ var $j = jQuery.noConflict();
       Displays a prompt for the removal of a class.
    
    Inputs:
-      url   -  A URL to forward the browser to if the confirm box is true.
+      url  -  A URL to forward the browser to if the confirm box is true.
    
    Outputs:
       A confirm box.
 */
 function removeClass(url) {
-   var check = confirm("Are you sure you want to remove this class?");
-
-   if(check) {
+   if(confirm("Are you sure you want to remove this class?")) {
       window.location.href = url;
    }
 }
@@ -84,34 +96,33 @@ function removeClass(url) {
 
 /*
    Function: showDetails
-      Constructs and shows the details of a class. Uses jQueryUI dialog to handle this.
+      Constructs and shows the details of a class. Uses jQueryUI dialog to handle the display.
    
    Inputs:
-      id -  The ID of the class to display.
+      id  -  The ID of the class to display.
    
    Outputs:
       A jQueryUI dialog box containing class details.
 */
 function showDetails(id) {
-   var $element = $j('<table></table>').attr({cellspacing: 0, cellpadding: 0});
+   var $table = $j('<table></table>').attr({cellspacing: 0, cellpadding: 0});
    
-   $j('.'+id+' > td').each(function() {
+   $j('.'+id+' > .otherDetails > span').each(function() {
       if($j(this).attr('name')) {
-         if($j(this).attr('name') == 'skip') { return true; }
          field = $j(this).attr('name').replace(/-/g, '/').replace(/_/g, ' ');
       }
       else {
          field = '';
       }
       
-      $j($element).append('<tr><td>'+field+'</td><td>'+$j(this).html()+'</td></tr>');
+      $j($table).append('<tr><td>'+field+'</td><td>'+$j(this).html()+'</td></tr>');
    });
    
-   $j($element).find('tr:last').attr('class', 'last');
-   $element = $j('<div></div>').attr('id', 'LIR-popup').append($element);
+   $j($table).find('tr:last').attr('class', 'last'); // Apply class to make it look pretty.
+   $table = $j('<div></div>').attr('id', 'LIR-popup').append($table);
    
-   $j($element).dialog({
-      title: 'Details',
+   $j($table).dialog({
+      title: 'Other Details',
       width: 360
    });
 }
