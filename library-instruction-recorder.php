@@ -3,7 +3,7 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 1.0.0
+   Version: 1.0.1
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
@@ -38,7 +38,7 @@ if(!class_exists('LIR')) {
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
-      const VERSION = '1.0.0';
+      const VERSION = '1.0.1';
       const MIN_VERSION = '3.6';
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
@@ -122,12 +122,8 @@ if(!class_exists('LIR')) {
          }
 
          // If the option already exists it will not be overwritten.
-         // Do not autoload the options, they are only used on select admin pages.
+         // Do not autoload the options, they are only used on admin pages.
          add_option(self::OPTIONS, self::$defaultOptions, '', 'no');
-         // Retrieves current options. This is what we can use for version checking.
-         $options = get_option(self::OPTIONS);
-
-         // VERSION CHECKING FOR DATABASE UPDATES
 
          // Add LIR tables to the database if they do not exist.
          global $wpdb;
@@ -237,12 +233,23 @@ if(!class_exists('LIR')) {
 
       /*
          Function: adminInit
-            Registers an option group so that the settings page functions and can be sanitized.
+            Performs plugin updates, registers an option group so that the settings page
+            functions and can be sanitized, makes sure the scheduler is set, and catches
+            the post action for downloading reports.
 
          See Also:
-            <settingsPage> and <sanitizeSettings>
+            <settingsPage>, <sanitizeSettings>, and <generateReport>
       */
       public function adminInit() {
+         $this->init();
+
+         // Plugin upgrades are performed here.
+         if($this->options['version'] != self::VERSION) {
+            // Update options to current version.
+            $this->options['version'] = self::VERSION;
+            update_option(self::OPTIONS, $this->options);
+         }
+
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
 
          // Setup/make sure scheduler is setup.
@@ -1619,7 +1626,8 @@ if(!class_exists('LIR')) {
 
       /*
          Function: sanitizeSettings
-            Sanitizes all inputs that are run through the settings page.
+            Sanitizes all inputs that are run through the settings page. Also adds version so it doesn't
+            get removed from the options.
 
          Inputs:
             input  -  Array of options from the LIR settings page.
