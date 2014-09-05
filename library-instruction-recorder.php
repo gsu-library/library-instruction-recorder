@@ -820,7 +820,8 @@ if(!class_exists('LIR')) {
                         $_POST['class_length'] = (strtotime($_POST['class_end']) - strtotime($_POST['class_start'])) / 60;
                      }
                      else {
-                        date_default_timezone_set('EST5EDT'); // This will probably be an issue at some point.
+                        $this->setTimeZone();
+
                         $minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
                         $time = date('g:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00').date(' A');
                      }
@@ -1719,6 +1720,26 @@ if(!class_exists('LIR')) {
          // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
          $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
+      }
+
+
+      /*
+         Function: setTimeZone
+            Sets the default timezone that PHP uses with the date function. This will not
+            work correctly if the GMT offset is used and DST is in effect.
+      */
+      private function setTimeZone() {
+         $zoneString = get_option('timezone_string'); // Is the timezone in here?
+         $gmtOffset = get_option('gmt_offset'); // How about in here?
+
+         if(!empty($zoneString)) {
+            date_default_timezone_set($zoneString);
+         }
+         else if(!empty($gmtOffset)) {
+            // This will not work correctly if the timezone uses DST (during DST).
+            date_default_timezone_set(timezone_name_from_abbr(null, $gmtOffset * 3600, 0));
+         }
+         // else... what now?
       }
 
 
