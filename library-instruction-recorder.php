@@ -45,8 +45,8 @@ if(!class_exists('LIR')) {
       const TABLE_FLAGS = '_flags';
       const SCHEDULE_TIME = '01:00:00';
       private static $defaultOptions = array(
-         'debug'           =>  false,
          'version'         =>  self::VERSION,
+         'debug'           =>  false,
          'name'            =>  self::NAME,
          'slug'            =>  self::SLUG,
          'intervalLength'  =>  15,
@@ -1631,9 +1631,12 @@ if(!class_exists('LIR')) {
             <settingsPage>
       */
       public function sanitizeSettings($input) {
+         $this->init();
+
+         $input['version'] = $this->options['version'];
+         $input['debug'] = ($input['debug'] == 'on') ? 'on' : '';
          $input['name'] = sanitize_text_field($input['name']);
          $input['slug'] = sanitize_text_field($input['slug']);
-         $input['debug'] = ($input['debug'] == 'on') ? 'on' : '';
          $input['intervalLength'] = absint($input['intervalLength']);
          $input['intervalAmount'] = absint($input['intervalAmount']);
 
