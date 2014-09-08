@@ -278,7 +278,7 @@ if(!class_exists('LIR')) {
          // If admin page doesn't belong to LIR, do not add CSS and JS.
          if($parent_file != self::SLUG) { return; }
 
-         // Register DataTables so that it can be a requirement for admin.js script.
+         // Register DataTables so that it can be a requirement for the admin.js script.
          wp_register_script(self::SLUG.'-dataTables', plugins_url('js/jquery.dataTables.min.js', __FILE__), array('jquery'), '1.10.1');
          wp_enqueue_script(self::SLUG.'-admin-JS', plugins_url('js/admin.js', __FILE__), array('jquery', self::SLUG.'-dataTables', 'jquery-ui-datepicker', 'jquery-ui-dialog'), self::VERSION);
          wp_enqueue_style(self::SLUG.'-admin-Css', plugins_url('css/admin.css', __FILE__), array(), self::VERSION);
