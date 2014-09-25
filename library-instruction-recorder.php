@@ -1641,12 +1641,15 @@ if(!class_exists('LIR')) {
       public function sanitizeSettings($input) {
          $this->init();
 
+         // Remove spaces!
+         $input = array_map("trim", $input);
+
          $input['version'] = $this->options['version'];
          $input['debug'] = ($input['debug'] == 'on') ? 'on' : '';
-         $input['name'] = sanitize_text_field($input['name']);
-         $input['slug'] = sanitize_text_field($input['slug']);
-         $input['intervalLength'] = absint($input['intervalLength']);
-         $input['intervalAmount'] = absint($input['intervalAmount']);
+         $input['name'] = (empty($input['name'])) ? self::$defaultOptions['name'] : sanitize_text_field($input['name']);
+         $input['slug'] = (empty($input['slug'])) ? self::$defaultOptions['slug'] : sanitize_text_field($input['slug']);
+         $input['intervalLength'] = (absint($input['intervalLength']) < 1) ? self::$defaultOptions['intervalLength'] : absint($input['intervalLength']);
+         $input['intervalAmount'] = (absint($input['intervalAmount']) < 1) ? self::$defaultOptions['intervalAmount'] : absint($input['intervalAmount']);
 
          return $input;
       }
