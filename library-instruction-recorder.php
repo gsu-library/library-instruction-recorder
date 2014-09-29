@@ -3,7 +3,7 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 1.0.2
+   Version: 1.1.0
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
@@ -38,7 +38,7 @@ if(!class_exists('LIR')) {
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
-      const VERSION = '1.0.2';
+      const VERSION = '1.1.0';
       const MIN_VERSION = '3.6';
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
