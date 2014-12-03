@@ -28,7 +28,7 @@ Visit [LIR's Bitbucket page](https://bitbucket.org/gsulibwebmaster/library-instr
 
 == Warning ==
 
-Library Instruction Recorder stores most of its data in custom tables within the WordPress database. **Deleting (*not deactivating*) this plugin will result in the loss of all stored data.** All of the class data is stored in the following tables: <WordPress_table_prefix>LIR_posts, <WordPress_table_prefix>LIR_flags, <WordPress_table_prefix>LIR_meta.
+Library Instruction Recorder stores most of its data in custom tables within the WordPress database. **Deleting (*not deactivating*) this plugin will result in the loss of all stored data.** All of the class data is stored in the following tables (minus the WordPress database prefix): LIR_posts, LIR_flags, and LIR_meta.
 
 == Requirements ==
 
@@ -83,7 +83,7 @@ Initial release so why not install?
 == Changelog ==
 
 = 1.1.1 =
-* CSV headers were not being sent before data in some instances of report generation, causing reports to not download. This has been fixed!
+* CSV headers were not being sent before data in some instances of report generation causing reports to not download. This has been fixed!
 
 = 1.1.0 =
 * Record count ("show entries" number) is now persistent on upcoming classes page (per user).
