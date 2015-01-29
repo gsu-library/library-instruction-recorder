@@ -87,7 +87,7 @@ if(!class_exists('LIR')) {
          // If these values are set then return.
          if(isset($this->options) && isset($this->tables)) { return; }
          // If not passed call global.
-         if($wpdb == NULL) { global $wpdb; }
+         if(!isset($wpdb)) { global $wpdb; }
 
          // Load options, self::$defaultOptions if they do not exist.
          $this->options = get_option(self::OPTIONS, self::$defaultOptions);
@@ -261,7 +261,7 @@ if(!class_exists('LIR')) {
          // if being submitted to the /wp-admin/admin-post.php page. That doesn't work well for this
          // implementation since the report can be generated as a file or on the reports page.
          if(isset($_POST['action']) && ($_POST['action'] == self::SLUG.'_download_report')) {
-            if($_POST['option'] == 'file') {
+            if(isset($_POST['option']) && ($_POST['option'] == 'file')) {
                $this->generateReport(true);
             }
          }
@@ -298,7 +298,7 @@ if(!class_exists('LIR')) {
          $this->init();
 
          // Changes language of "add a class" on the submenu when editing a class.
-         $addClassName = $_GET['edit'] ? 'Add/Edit a Class' : 'Add a Class';
+         $addClassName = isset($_GET['edit']) ? 'Add/Edit a Class' : 'Add a Class';
 
          // Adds the main menu item.
          add_menu_page('', $this->options['slug'], 'read', self::SLUG, array(&$this, 'defaultPage'), '', '58.992');
@@ -332,13 +332,14 @@ if(!class_exists('LIR')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         // If user is only a subscriber.
+         // If user is a subscriber.
          $subscriber = current_user_can('edit_posts') ? false : true;
          global $wpdb, $current_user;
          $this->init($wpdb);
          get_currentuserinfo();
          $baseUrl = admin_url('admin.php?page='.self::SLUG);
          $delete = (!empty($_GET['delete'])) ? $_GET['delete'] : NULL;
+         $classRemoved = NULL;
 
 
          // Handle deletion if present.
@@ -365,13 +366,13 @@ if(!class_exists('LIR')) {
 
 
          // Pick list to display and setup for link persistence.
-         if($_GET['incomplete']) {
+         if(isset($_GET['incomplete'])) {
             $result = $incomplete;
          }
-         else if($_GET['previous']) {
+         else if(isset($_GET['previous'])) {
             $result = $previous;
          }
-         else if($_GET['myclasses']) {
+         else if(isset($_GET['myclasses'])) {
             $result = $myclasses;
          }
          else {
@@ -422,20 +423,20 @@ if(!class_exists('LIR')) {
                <?php
                // Upcoming classes.
                echo '<li><a href="'.$baseUrl.'"';
-               if(!$_GET['incomplete'] && !$_GET['previous'] && !$_GET['myclasses']) { echo ' class="current"'; }
+               if(!isset($_GET['incomplete']) && !isset($_GET['previous']) && !isset($_GET['myclasses'])) { echo ' class="current"'; }
                echo '>Upcoming <span class="count">('.$upcomingCount.')</span></a> |</li>';
                // Incomplete classes.
                echo '<li><a href="'.$baseUrl.'&incomplete=1"';
-               if($_GET['incomplete'] == '1') { echo ' class="current"'; }
+               if(isset($_GET['incomplete']) && ($_GET['incomplete'] == '1')) { echo ' class="current"'; }
                echo '>Incomplete <span class="count">('.$incompleteCount.')</span></a> |</li>';
                // Previous classes.
                echo '<li><a href="'.$baseUrl.'&previous=1"';
-               if($_GET['previous'] == '1') { echo ' class="current"'; }
+               if(isset($_GET['previous']) && ($_GET['previous'] == '1')) { echo ' class="current"'; }
                echo '>Previous <span class="count">('.$previousCount.')</span></a></li>';
                // My classes (if not a subscriber).
                if(!$subscriber) {
                   echo '<li>| <a href="'.$baseUrl.'&myclasses=1"';
-                  if($_GET['myclasses'] == '1') { echo ' class="current"'; }
+                  if(isset($_GET['myclasses']) && ($_GET['myclasses'] == '1')) { echo ' class="current"'; }
                   echo '>My Classes <span class="count">('.$myclassesCount.')</span></a></li>';
                }
                ?>
@@ -505,9 +506,9 @@ if(!class_exists('LIR')) {
                   // Edit and delete links for classes.
                   if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
                      $var = '';
-                     if($_GET['incomplete'])     { $var = '&incomplete=1'; }
-                     else if($_GET['previous'])  { $var = '&previous=1'; }
-                     else if($_GET['myclasses']) { $var = '&myclasses=1'; }
+                     if(isset($_GET['incomplete']))     { $var = '&incomplete=1'; }
+                     else if(isset($_GET['previous']))  { $var = '&previous=1'; }
+                     else if(isset($_GET['myclasses'])) { $var = '&myclasses=1'; }
 
                      echo ' | <a href="'.$baseUrl.'-add-a-class&edit='.$class->id.'">Edit</a>';
                      echo ' | <a href="#" class="stopLinkFire" onclick="removeClass(\''.$baseUrl.$var.'&delete='.$class->id.'&n='.wp_create_nonce(self::SLUG.'-delete-'.$class->id).'\')">Delete</a>';
@@ -582,7 +583,7 @@ if(!class_exists('LIR')) {
 
 
          // Edit a class setup and permission checking (for edit).
-         if($_GET['edit'] && !$_POST['edit']) {
+         if(isset($_GET['edit']) && !isset($_POST['edit'])) {
             $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['edit']));
 
             // Save DB to POST so fields can be populated from same pool during editing and failed submissions.
@@ -597,7 +598,7 @@ if(!class_exists('LIR')) {
             }
          }
          // If this is a copy class request.
-         else if ($_GET['copy']) {
+         else if(isset($_GET['copy'])) {
             $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['copy']));
 
             // Save DB to POST so fields can be populated from same pool during editing and failed submissions.
@@ -623,18 +624,18 @@ if(!class_exists('LIR')) {
             if(empty($_POST['audience']))           { array_push($error, 'Missing Field: Audience'); }
 
             // Go to function to insert data into database.
-            if(empty($error)) { $classAdded = $this->addUpdateClass($_POST['edit']); }
+            if(empty($error) && isset($_POST['edit'])) { $classAdded = $this->addUpdateClass($_POST['edit']); }
             // This will make things easier from here on down, although should not happen.
             if($classAdded === 0) { $classAdded = true; }
             // If update fails with no other errors.
-            if(!$classAdded && empty($error) && $_POST['edit']) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
+            if(!$classAdded && empty($error) && isset($_POST['edit'])) { array_push($error, 'An error has occurred while trying to update the class. Please try again.'); }
             // If insert fails with no other errors.
             else if(!$classAdded && empty($error)) { array_push($error, 'An error has occurred while trying to submit the class. Please try again.'); }
          }
          ?>
 
          <div class="wrap">
-            <h2><?= ($_GET['edit']) ? 'Edit' : 'Add'; ?> a Class</h2>
+            <h2><?= (isset($_GET['edit'])) ? 'Edit' : 'Add'; ?> a Class</h2>
 
             <?php
             // Added for debugging (if set).
@@ -686,13 +687,13 @@ if(!class_exists('LIR')) {
                </div>';
             }
             // Message if class was added.
-            if($classAdded && !$_POST['edit']) {
+            if($classAdded && !isset($_POST['edit'])) {
                echo '<div id="message" class="updated">
                   <p><strong>The class has been added!</strong> Need to <a href="'.$baseUrl.'&edit='.$classAdded.'">edit it</a>? <a href="'.$baseUrl.'&copy='.$classAdded.'">Copy it</a>? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
                </div>';
             }
             // Message if class was updated.
-            else if($classAdded && $_POST['edit']) {
+            else if($classAdded && isset($_POST['edit'])) {
                echo '<div id="message" class="updated">
                   <p><strong>The class has been updated!</strong> Need to <a href="'.$baseUrl.'&edit='.$_POST['edit'].'">edit it</a> again? <a href="'.$baseUrl.'&copy='.$_POST['edit'].'">Copy it</a>? Would you like to <a href="'.$baseUrl.'">add a new class?</a></p>
                </div>';
@@ -713,15 +714,15 @@ if(!class_exists('LIR')) {
                         echo '<option';
 
                         // If nothing has been submitted and it's a new submission select current user.
-                        if(($classAdded === NULL) && !($_GET['edit'] || $_GET['copy']) && ($u->display_name == $user_identity)) {
+                        if(($classAdded === NULL) && !(isset($_GET['edit']) || isset($_GET['copy'])) && ($u->display_name == $user_identity)) {
                            echo ' selected="selected"';
                         }
                         // If this is an edit or copy that hasn't been submitted display the previous name.
-                        else if(($classAdded === NULL) && ($_GET['edit'] || $_GET['copy']) && ($u->display_name == $_POST['librarian_name'])) {
+                        else if(($classAdded === NULL) && (isset($_GET['edit']) || isset($_GET['copy'])) && ($u->display_name == $_POST['librarian_name'])) {
                            echo ' selected="selected"';
                         }
                         // If there was a submission error display submitted name.
-                        else if(($classAdded === false) && ($u->display_name == $_POST['librarian_name'])) {
+                        else if(($classAdded === false) && isset($_POST['librarian_name']) && ($u->display_name == $_POST['librarian_name'])) {
                            echo ' selected="selected"';
                         }
                         // After a successful submission.
@@ -743,7 +744,7 @@ if(!class_exists('LIR')) {
                      foreach($user as $u) {
                         if($u->display_name == "admin") { continue; }
 
-                        if(!$classAdded && ($u->display_name == $_POST['librarian2_name'])) {
+                        if(!$classAdded && isset($_POST['librarian2_name']) && ($u->display_name == $_POST['librarian2_name'])) {
                            echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
                         }
                         else {
@@ -778,7 +779,7 @@ if(!class_exists('LIR')) {
 
                            <?php
                            foreach($departmentGroup as $x) {
-                              if(!$classAdded && (esc_attr($x) == $_POST['department_group'])) {
+                              if(!$classAdded && isset($_POST['department_group']) && (esc_attr($x) == $_POST['department_group'])) {
                                  echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
                               }
                               else {
@@ -862,7 +863,7 @@ if(!class_exists('LIR')) {
                          foreach($classLocation as $x) {
                             echo '<option value="'.esc_attr($x).'"';
 
-                            if(!$classAdded && $_POST['class_location'] == esc_attr($x)) {
+                            if(!$classAdded && isset($_POST['class_location']) && ($_POST['class_location'] == esc_attr($x))) {
                                echo ' selected="selected"';
                             }
 
@@ -881,7 +882,7 @@ if(!class_exists('LIR')) {
                         foreach($classType as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && $_POST['class_type'] == esc_attr($x)) {
+                           if(!$classAdded && isset($_POST['class_type']) && ($_POST['class_type'] == esc_attr($x))) {
                               echo ' selected="selected"';
                            }
 
@@ -900,7 +901,7 @@ if(!class_exists('LIR')) {
                         foreach($audience as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && $_POST['audience'] == esc_attr($x)) {
+                           if(!$classAdded && isset($_POST['audience']) && ($_POST['audience'] == esc_attr($x))) {
                               echo ' selected="selected"';
                            }
 
@@ -973,7 +974,7 @@ if(!class_exists('LIR')) {
                </table>
 
                <?php wp_nonce_field(self::SLUG.'_add_class', self::SLUG.'_nonce'); ?>
-               <?php if($_GET['edit']) echo '<input type="hidden" name="edit" value="'.$_GET['edit'].'" />'; ?>
+               <?php if(isset($_GET['edit'])) echo '<input type="hidden" name="edit" value="'.$_GET['edit'].'" />'; ?>
 
                <p class="submit">
                   <input type="submit" name="submitted" class="button-primary" value="Submit" />&nbsp;&nbsp;
