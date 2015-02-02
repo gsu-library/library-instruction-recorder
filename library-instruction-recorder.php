@@ -624,7 +624,7 @@ if(!class_exists('LIR')) {
             if(empty($_POST['audience']))           { array_push($error, 'Missing Field: Audience'); }
 
             // Go to function to insert data into database.
-            if(empty($error) && isset($_POST['edit'])) { $classAdded = $this->addUpdateClass($_POST['edit']); }
+            if(empty($error)) { $classAdded = isset($_POST['edit']) ? $this->addUpdateClass($_POST['edit']) : $this->addUpdateClass(); }
             // This will make things easier from here on down, although should not happen.
             if($classAdded === 0) { $classAdded = true; }
             // If update fails with no other errors.
