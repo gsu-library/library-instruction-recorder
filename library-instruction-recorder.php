@@ -960,7 +960,7 @@ if(!class_exists('LIR')) {
 
                         if(!empty($_POST[$name])) {
                            echo '<tr><th>'.$_POST[$name].'</th>';
-                           echo '<td><input type="checkbox" name="flagValue'.$d.'"'; if($_POST['flagValue'.$d] == 'on') { echo ' checked="checked"'; } echo ' />';
+                           echo '<td><input type="checkbox" name="flagValue'.$d.'"'; if(isset($_POST['flagValue'.$d]) && $_POST['flagValue'.$d] == 'on') { echo ' checked="checked"'; } echo ' />';
                            echo '<input type="hidden" name="flagName'.$d.'" value="'.esc_attr($_POST[$name]).'" /></td></tr>';
                         }
                      }
@@ -1009,25 +1009,39 @@ if(!class_exists('LIR')) {
          $myQuery .= $this->tables['posts'].' SET';
 
          // Not NULL columns.
-         $myQuery .= ' librarian_name = %s,';
-         array_push($dataTypes, $_POST['librarian_name']);
-         $myQuery .= ' instructor_name = %s,';
-         array_push($dataTypes, $_POST['instructor_name']);
-         $myQuery .= ' class_location = %s,';
-         array_push($dataTypes, $_POST['class_location']);
-         $myQuery .= ' class_type = %s,';
-         array_push($dataTypes, $_POST['class_type']);
-         $myQuery .= ' audience = %s,';
-         array_push($dataTypes, $_POST['audience']);
-         $myQuery .= ' department_group = %s,';
-         array_push($dataTypes, $_POST['department_group']);
+         if(isset($_POST['librarian_name'])) {
+            $myQuery .= ' librarian_name = %s,';
+            array_push($dataTypes, $_POST['librarian_name']);
+         }
+         if(isset($_POST['instructor_name'])) {
+            $myQuery .= ' instructor_name = %s,';
+            array_push($dataTypes, $_POST['instructor_name']);
+         }
+         if(isset($_POST['class_location'])) {
+            $myQuery .= ' class_location = %s,';
+            array_push($dataTypes, $_POST['class_location']);
+         }
+         if(isset($_POST['class_type'])) {
+            $myQuery .= ' class_type = %s,';
+            array_push($dataTypes, $_POST['class_type']);
+         }
+         if(isset($_POST['audience'])) {
+            $myQuery .= ' audience = %s,';
+            array_push($dataTypes, $_POST['audience']);
+         }
+         if(isset($_POST['department_group'])) {
+            $myQuery .= ' department_group = %s,';
+            array_push($dataTypes, $_POST['department_group']);
+         }
          $myQuery .= ' last_updated_by = %d,';
          array_push($dataTypes, $current_user->id);
 
          // Datetime columns.
-         $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
-         $myQuery .= ' class_start = \''.$classStart.'\',';
-         $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes')).'\',';
+         if(isset($_POST['class_date']) && isset($_POST['class_time']) && isset($_POST['class_length'])) {
+            $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
+            $myQuery .= ' class_start = \''.$classStart.'\',';
+            $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes')).'\',';
+         }
 
          // NULL columns.
          $myQuery .= ' librarian2_name = ';
