@@ -1161,7 +1161,7 @@ if(!class_exists('LIR')) {
             </form>
 
             <?php
-            if(isset($_POST['action']) && ($_POST['action'] == self::SLUG.'_download_report') && ($_POST['option'] == 'report')) {
+            if(isset($_POST['action']) && ($_POST['action'] == self::SLUG.'_download_report') && (isset($_POST['option']) && ($_POST['option'] == 'report'))) {
                $this->generateReport(false);
             }
             ?>
@@ -1352,9 +1352,8 @@ if(!class_exists('LIR')) {
             }
             // Remove a department / group field from the database.
             else if(!empty($_POST['deptGroupRemove'])) {
-               $temp = $_POST['deptGroupSB'] + 1;
-
-               if(!empty($temp)) {
+               // Make sure something was selected in the select box.
+               if(!empty($_POST['deptGroupSB']) || ($_POST['deptGroupSB'] === '0')) {
                   unset($departmentGroup[$_POST['deptGroupSB']]);
 
                   if($departmentGroup) {
@@ -1365,6 +1364,7 @@ if(!class_exists('LIR')) {
                   }
                }
             }
+
             // Add a class location field to the database.
             if(!empty($_POST['classLocAdd']) && !empty($_POST['classLocTB'])) {
                if($classLocation) {
@@ -1380,9 +1380,8 @@ if(!class_exists('LIR')) {
             }
             // Remove a class location field from the database.
             else if(!empty($_POST['classLocRemove'])) {
-               $temp = $_POST['classLocSB'] + 1;
-
-               if(!empty($temp)) {
+               // Make sure something was selected in the select box.
+               if(!empty($_POST['classLocSB']) || ($_POST['classLocSB'] === '0')) {
                   unset($classLocation[$_POST['classLocSB']]);
 
                   if($classLocation) {
@@ -1393,6 +1392,7 @@ if(!class_exists('LIR')) {
                   }
                }
             }
+
             // Add a class type field to the database.
             if(!empty($_POST['classTypeAdd']) && !empty($_POST['classTypeTB'])) {
                if($classType) {
@@ -1408,9 +1408,8 @@ if(!class_exists('LIR')) {
             }
             // Remove a class type field from the database.
             else if(!empty($_POST['classTypeRemove'])) {
-               $temp = $_POST['classTypeSB'] + 1;
-
-               if(!empty($temp)) {
+               // Make sure something was selected in the select box.
+               if(!empty($_POST['classTypeSB']) || ($_POST['classTypeSB'] === '0')) {
                   unset($classType[$_POST['classTypeSB']]);
 
                   if($classType) {
@@ -1421,6 +1420,7 @@ if(!class_exists('LIR')) {
                   }
                }
             }
+
             // Add an audience field to the database.
             if(!empty($_POST['audienceAdd']) && !empty($_POST['audienceTB'])) {
                if($audience) {
@@ -1436,9 +1436,8 @@ if(!class_exists('LIR')) {
             }
             // Remove an audience field from the database.
             else if(!empty($_POST['audienceRemove'])) {
-               $temp = $_POST['audienceSB'] + 1;
-
-               if(!empty($temp)) {
+               // Make sure something was selected in the select box.
+               if(!empty($_POST['audienceSB']) || ($_POST['audienceSB'] === '0')) {
                   unset($audience[$_POST['audienceSB']]);
 
                   if($audience) {
@@ -1449,8 +1448,9 @@ if(!class_exists('LIR')) {
                   }
                }
             }
+
             // Adds flag options to the database.
-            else if(!empty($_POST['flagSave'])) {
+            if(!empty($_POST['flagSave'])) {
                $flags = array(); // Don't want leftovers...
                $flagNames = preg_grep('/^flagName\d+/', array_keys($_POST));
 
@@ -1459,7 +1459,7 @@ if(!class_exists('LIR')) {
 
                   // Make sure flagName POST var exists.
                   if(!empty($_POST[$name])) {
-                     $flags[$_POST[$name]] = $_POST['flagEnabled'.$i];
+                     $flags[$_POST[$name]] = !empty($_POST['flagEnabled'.$i]) ? $_POST['flagEnabled'.$i] : '0';
                   }
                }
 
