@@ -532,7 +532,7 @@ if(!class_exists('LIR')) {
                      echo '</span>';
                   }
 
-                  echo '<span name="Attendance">'; echo $class->attendance ? $class->attendance : 'Not Yet Recorded'; echo '</span>';
+                  echo '<span name="Attendance">'; echo ($class->attendance === NULL) ? 'Not Yet Recorded' : $class->attendance; echo '</span>';
                   echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</span>';
                   echo '</td>';
 
@@ -969,7 +969,7 @@ if(!class_exists('LIR')) {
 
                   <tr>
                      <th>Number of Students Attended</th>
-                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && !empty($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
+                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && isset($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
                   </tr>
                </table>
 
@@ -1054,8 +1054,21 @@ if(!class_exists('LIR')) {
          if(empty($_POST['class_description'])) { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['class_description']); }
          $myQuery .= ' course_number = ';
          if(empty($_POST['course_number']))     { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['course_number']); }
+
+         // Attendance is a special case since we differentiate between 0 and empty.
          $myQuery .= ' attendance = ';
-         if(empty($_POST['attendance']))        { $myQuery .= 'NULL';  } else { $myQuery .= '%d';  array_push($dataTypes, $_POST['attendance']); }
+         if(isset($_POST['attendance'])) {
+            if($_POST['attendance'] || (trim($_POST['attendance']) === '0')) {
+               $myQuery .= '%d';  array_push($dataTypes, $_POST['attendance']);
+            }
+            else {
+               $myQuery .= 'NULL';
+            }
+         }
+         // Just in case this is not set in POST (should never happen).
+         else {
+            $myQuery .= 'NULL';
+         }
 
          // If is an update add ID.
          if($id) {
