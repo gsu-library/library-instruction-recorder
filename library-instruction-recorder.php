@@ -1275,8 +1275,6 @@ if(!class_exists('LIR')) {
                fputcsv($f, $line);
             }
 
-            fseek($f, 0);
-            fpassthru($f);
             fclose($f);
             exit;
          }
