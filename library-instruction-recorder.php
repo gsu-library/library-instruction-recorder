@@ -348,7 +348,7 @@ if(!class_exists('LIR')) {
             $class = $wpdb->get_row($query);
 
             // Check if the user has permissions to remove the class and verify the nonce.
-            if((current_user_can('manage_options') || $current_user->id == $class->owner_id) && wp_verify_nonce($_GET['n'], self::SLUG.'-delete-'.$delete)) {
+            if((current_user_can('manage_options') || $current_user->ID == $class->owner_id) && wp_verify_nonce($_GET['n'], self::SLUG.'-delete-'.$delete)) {
                $classRemoved = $wpdb->delete($this->tables['posts'], array('id' => $delete), '%d');
             }
          }
@@ -361,7 +361,7 @@ if(!class_exists('LIR')) {
          $incompleteCount = $wpdb->num_rows;
          $previous        = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE NOW() > class_end ORDER BY class_start DESC, class_end");
          $previousCount   = $wpdb->num_rows;
-         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE owner_id = ".$current_user->id." ORDER BY class_start DESC, clasS_end");
+         $myclasses       = $wpdb->get_results("SELECT * FROM ".$this->tables['posts']." WHERE owner_id = ".$current_user->ID." ORDER BY class_start DESC, clasS_end");
          $myclassesCount  = $wpdb->num_rows;
 
 
@@ -504,7 +504,7 @@ if(!class_exists('LIR')) {
                   }
 
                   // Edit and delete links for classes.
-                  if($class->owner_id == $current_user->id || current_user_can('manage_options')) {
+                  if($class->owner_id == $current_user->ID || current_user_can('manage_options')) {
                      $var = '';
                      if(isset($_GET['incomplete']))     { $var = '&incomplete=1'; }
                      else if(isset($_GET['previous']))  { $var = '&previous=1'; }
@@ -592,7 +592,7 @@ if(!class_exists('LIR')) {
             }
 
             // Permission checking.
-            if(!current_user_can('manage_options') && ($current_user->id != $class->owner_id)) {
+            if(!current_user_can('manage_options') && ($current_user->ID != $class->owner_id)) {
                array_push($error, 'You do not have sufficient permissions to edit this class. <a href="'.$baseUrl.'">Add a new class?</a>');
                $_POST['submitted'] = NULL; // Ensures the class is never processed for submission.
             }
@@ -1034,7 +1034,7 @@ if(!class_exists('LIR')) {
             array_push($dataTypes, $_POST['department_group']);
          }
          $myQuery .= ' last_updated_by = %d,';
-         array_push($dataTypes, $current_user->id);
+         array_push($dataTypes, $current_user->ID);
 
          // Datetime columns.
          if(isset($_POST['class_date']) && isset($_POST['class_time']) && isset($_POST['class_length'])) {
@@ -1065,7 +1065,7 @@ if(!class_exists('LIR')) {
          // If it is not an update include owner ID. This will have to be edited when owners can be changed.
          else {
             $myQuery .= ', owner_id = %d';
-            array_push($dataTypes, $current_user->id);
+            array_push($dataTypes, $current_user->ID);
          }
 
          $success = $wpdb->query($wpdb->prepare($myQuery, $dataTypes));
@@ -1745,7 +1745,7 @@ if(!class_exists('LIR')) {
          if($position == NULL) { return; }
 
          // Get count of classes that need to be updated.
-         $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->tables['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->id);
+         $count = $wpdb->get_var('SELECT COUNT(*) FROM '.$this->tables['posts'].' WHERE DATE(class_end) < DATE(NOW()) AND attendance IS NULL AND owner_id = '.$current_user->ID);
          // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
          $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
