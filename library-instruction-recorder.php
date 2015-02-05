@@ -44,6 +44,7 @@ if(!class_exists('LIR')) {
       const TABLE_META = '_meta';
       const TABLE_FLAGS = '_flags';
       const SCHEDULE_TIME = '01:00:00';
+      const CHARSET = 'utf8';
       private static $defaultOptions = array(
          'version'         =>  self::VERSION,
          'debug'           =>  false,
@@ -129,6 +130,10 @@ if(!class_exists('LIR')) {
          require_once(ABSPATH.'wp-admin/includes/upgrade.php'); // Required for dbDelta.
 
          // Post table.
+         /*************************************
+         Eventually change the charset so that it uses what is defined in the WP config file (if there).
+         $wpdb->charset;
+         *************************************/
          $query = "CREATE TABLE IF NOT EXISTS ".$wpdb->prefix.self::SLUG.self::TABLE_POSTS." (
                       id mediumint(8) UNSIGNED NOT NULL AUTO_INCREMENT,
                       librarian_name varchar(255) NOT NULL,
@@ -1671,7 +1676,7 @@ if(!class_exists('LIR')) {
          $input = array_map("trim", $input);
 
          $input['version'] = $this->options['version'];
-         $input['debug'] = ($input['debug'] == 'on') ? 'on' : '';
+         $input['debug'] = (isset($input['debug']) && ($input['debug'] == 'on')) ? 'on' : '';
          $input['name'] = (empty($input['name'])) ? self::$defaultOptions['name'] : sanitize_text_field($input['name']);
          $input['slug'] = (empty($input['slug'])) ? self::$defaultOptions['slug'] : sanitize_text_field($input['slug']);
          $input['intervalLength'] = (absint($input['intervalLength']) < 1) ? self::$defaultOptions['intervalLength'] : absint($input['intervalLength']);
