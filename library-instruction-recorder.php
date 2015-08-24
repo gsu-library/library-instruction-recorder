@@ -3,7 +3,7 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 1.1.3
+   Version: 1.1.4
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
@@ -38,7 +38,7 @@ if(!class_exists('LIR')) {
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
-      const VERSION = '1.1.3';
+      const VERSION = '1.1.4';
       const MIN_VERSION = '3.6';
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
@@ -245,11 +245,21 @@ if(!class_exists('LIR')) {
             <settingsPage>, <sanitizeSettings>, and <generateReport>
       */
       public function adminInit() {
-         $this->init();
+         global $wpdb;
+         $this->init($wpdb);
 
-         // Plugin upgrades are performed here.
-         if($this->options['version'] != self::VERSION) {
-            // Update options to current version.
+         // PLUGIN UPDATES ARE PERFORMED HERE.
+         // Run the update that fixes the last_updated field in the posts table.
+         if(version_compare('1.1.4', $this->options['version'], '>')) {
+            $query = 'ALTER TABLE '.$this->tables['posts'].'
+                         MODIFY COLUMN last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
+
+            // dbDelta should be used for ALTER statements.
+            require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+            dbDelta($query);
+         }
+         // If plugin options don't reflect the plugin version, make it so.
+         if(version_compare(self::VERSION, $this->options['version'], '!=')) {
             $this->options['version'] = self::VERSION;
             update_option(self::OPTIONS, $this->options);
          }
