@@ -151,7 +151,7 @@ if(!class_exists('LIR')) {
                       course_number varchar(255) DEFAULT NULL,
                       attendance smallint(6) UNSIGNED DEFAULT NULL,
                       owner_id bigint(20) NOT NULL,
-                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                       last_updated_by bigint(20) NOT NULL,
                       PRIMARY KEY (id)
                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
@@ -835,8 +835,7 @@ if(!class_exists('LIR')) {
                         $_POST['class_length'] = (strtotime($_POST['class_end'], $timeStamp) - strtotime($_POST['class_start'], $timeStamp)) / 60;
                      }
                      else {
-                        //$this->setTimeZone();
-
+                        // Timezone was set here before.
                         $minutes = date('i', strtotime("+15 minutes", $timeStamp)) - date('i', strtotime("+15 minutes", $timeStamp)) % 15;
                         $time = date('g:', strtotime("+15 minutes", $timeStamp)).(($minutes) ? $minutes : '00').date(' A', $timeStamp);
                      }
@@ -1041,6 +1040,7 @@ if(!class_exists('LIR')) {
             $myQuery .= ' department_group = %s,';
             array_push($dataTypes, $_POST['department_group']);
          }
+
          $myQuery .= ' last_updated_by = %d,';
          array_push($dataTypes, $current_user->ID);
 
@@ -1769,26 +1769,6 @@ if(!class_exists('LIR')) {
          // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
          $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
-      }
-
-
-      /*
-         Function: setTimeZone
-            Sets the default timezone that PHP uses with the date function. This will not
-            work correctly if the GMT offset is used and DST is in effect.
-      */
-      private function setTimeZone() {
-         $zoneString = get_option('timezone_string'); // Is the timezone in here?
-         $gmtOffset = get_option('gmt_offset'); // How about in here?
-
-         if(!empty($zoneString)) {
-            date_default_timezone_set($zoneString);
-         }
-         else if(!empty($gmtOffset)) {
-            // This will not work correctly if the timezone uses DST (during DST).
-            date_default_timezone_set(timezone_name_from_abbr(null, $gmtOffset * 3600, 0));
-         }
-         // else... what now?
       }
 
 
