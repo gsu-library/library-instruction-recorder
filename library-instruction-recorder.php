@@ -43,7 +43,7 @@ if(!class_exists('LIR')) {
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
       const TABLE_FLAGS = '_flags';
-      const SCHEDULE_TIME = '01:00:00';
+      const SCHEDULE_TIME = '06:00:00';
       const CHARSET = 'utf8';
       private static $defaultOptions = array(
          'version'         =>  self::VERSION,
@@ -258,7 +258,7 @@ if(!class_exists('LIR')) {
 
          // Setup/make sure scheduler is setup.
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
+            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', current_time('timestamp')), 'daily', self::SLUG.'_schedule');
          }
 
          // Generates and sends CSV file (before standard headers are sent).
@@ -345,6 +345,7 @@ if(!class_exists('LIR')) {
          $baseUrl = admin_url('admin.php?page='.self::SLUG);
          $delete = (!empty($_GET['delete'])) ? $_GET['delete'] : NULL;
          $classRemoved = NULL;
+         $timeStamp = current_time('timestamp');
 
 
          // Handle deletion if present.
@@ -398,9 +399,9 @@ if(!class_exists('LIR')) {
             if($this->options['debug']) {
                echo '<div id="message" class="error">';
                echo '<p><strong>Time</strong><br />';
-               echo time().' - '.date('c', time()).'</p>';
+               echo $timeStamp.' - '.date('c', $timeStamp).'</p>';
                echo '<p><strong>First Schedule?</strong><br />';
-               echo strtotime(self::SCHEDULE_TIME.' +1 day', time()).' - '.date('c', strtotime(self::SCHEDULE_TIME.' +1 day', time())).'</p>';
+               echo strtotime(self::SCHEDULE_TIME.' +1 day', $timeStamp).' - '.date('c', strtotime(self::SCHEDULE_TIME.' +1 day', $timeStamp)).'</p>';
                echo '<p><strong>Next Schedule</strong><br />';
                echo wp_next_scheduled(self::SLUG.'_schedule').' - '.date('c', wp_next_scheduled(self::SLUG.'_schedule')).'</p>';
 
@@ -481,12 +482,12 @@ if(!class_exists('LIR')) {
 
                   // Display start date & time - end date & time.
                   if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
-                     echo '<td name="Date-Time"><span class="hide">'.$class->class_start.' - '.$class->class_end.'</span>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
-                     echo date('g:i A', strtotime($class->class_end)).'</td>';
+                     echo '<td name="Date-Time"><span class="hide">'.$class->class_start.' - '.$class->class_end.'</span>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start, $timeStamp));
+                     echo date('g:i A', strtotime($class->class_end, $timeStamp)).'</td>';
                   }
                   else { // If the end time is not on the same day as the start time.
-                     echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A -', strtotime($class->class_start)).'<br />';
-                     echo date('n/j/Y (D) g:i A', strtotime($class->class_end)).'</td>';
+                     echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A -', strtotime($class->class_start, $timeStamp)).'<br />';
+                     echo date('n/j/Y (D) g:i A', strtotime($class->class_end, $timeStamp)).'</td>';
                   }
 
                   echo '<td name="Primary_Librarian">'.$class->librarian_name.'</td>';
@@ -538,7 +539,7 @@ if(!class_exists('LIR')) {
                   }
 
                   echo '<span name="Attendance">'; echo ($class->attendance === NULL) ? 'Not Yet Recorded' : $class->attendance; echo '</span>';
-                  echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</span>';
+                  echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated, $timeStamp)).'</span>';
                   echo '</td>';
 
                   echo '</td></tr>';
@@ -574,6 +575,7 @@ if(!class_exists('LIR')) {
          $baseUrl = admin_url('admin.php?page='.self::SLUG.'-add-a-class');
          $classAdded = NULL;
          $error = array();
+         $timeStamp = current_time('timestamp');
 
 
          // Prepare required meta fields (so we can check these).
@@ -810,10 +812,10 @@ if(!class_exists('LIR')) {
                         echo $_POST['class_date'];
                      }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
-                        echo date('n/j/Y', strtotime($_POST['class_start']));
+                        echo date('n/j/Y', strtotime($_POST['class_start'], $timeStamp));
                      }
                      else {
-                        echo date('n/j/Y');
+                        echo date('n/j/Y', $timeStamp);
                      }
 
                      echo '" />';
@@ -826,17 +828,17 @@ if(!class_exists('LIR')) {
 
                      <?php
                      if(!$classAdded && !empty($_POST['class_time'])) {
-                        $time = date('g:i A', strtotime($_POST['class_time']));
+                        $time = date('g:i A', strtotime($_POST['class_time'], $timeStamp));
                      }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
-                        $time = date('g:i A', strtotime($_POST['class_start']));
-                        $_POST['class_length'] = (strtotime($_POST['class_end']) - strtotime($_POST['class_start'])) / 60;
+                        $time = date('g:i A', strtotime($_POST['class_start'], $timeStamp));
+                        $_POST['class_length'] = (strtotime($_POST['class_end'], $timeStamp) - strtotime($_POST['class_start'], $timeStamp)) / 60;
                      }
                      else {
-                        $this->setTimeZone();
+                        //$this->setTimeZone();
 
-                        $minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
-                        $time = date('g:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00').date(' A');
+                        $minutes = date('i', strtotime("+15 minutes", $timeStamp)) - date('i', strtotime("+15 minutes", $timeStamp)) % 15;
+                        $time = date('g:', strtotime("+15 minutes", $timeStamp)).(($minutes) ? $minutes : '00').date(' A', $timeStamp);
                      }
                      ?>
 
@@ -1007,6 +1009,7 @@ if(!class_exists('LIR')) {
          global $wpdb, $current_user;
          $this->init($wpdb);
          get_currentuserinfo();
+         $timeStamp = current_time('timestamp');
 
 
          $dataTypes = array();
@@ -1043,9 +1046,9 @@ if(!class_exists('LIR')) {
 
          // Datetime columns.
          if(isset($_POST['class_date']) && isset($_POST['class_time']) && isset($_POST['class_length'])) {
-            $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
+            $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time'], $timeStamp));
             $myQuery .= ' class_start = \''.$classStart.'\',';
-            $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes')).'\',';
+            $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes', $timeStamp)).'\',';
          }
 
          // NULL columns.
@@ -1211,6 +1214,7 @@ if(!class_exists('LIR')) {
                    u2.display_name as last_updated_by FROM '.$this->tables['posts'].' p JOIN '.$wpdb->users.' u ON p.owner_id = u.ID
                    JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
          $options = array();
+         $timeStamp = current_time('timestamp');
 
          // Check if additional parameters have been given.
          if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
@@ -1223,13 +1227,13 @@ if(!class_exists('LIR')) {
                $fileName .= ' '.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
             }
             if(!empty($_POST['startDate'])) {
-               $date = date('Y-m-d', strtotime($_POST['startDate']));
+               $date = date('Y-m-d', strtotime($_POST['startDate'], $timeStamp));
                $query .= ' class_start >= %s AND';
                array_push($options, $date.' 00:00:00');
                $fileName .= ' starting '.$date;
             }
             if(!empty($_POST['endDate'])) {
-               $date = date('Y-m-d', strtotime($_POST['endDate']));
+               $date = date('Y-m-d', strtotime($_POST['endDate'], $timeStamp));
                $query .= ' class_start <= %s AND';
                array_push($options, $date.' 23:59:59');
                $fileName .= ' ending '.$date;
