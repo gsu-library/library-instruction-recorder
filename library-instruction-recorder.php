@@ -1785,7 +1785,7 @@ if(!class_exists('LIR')) {
          // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
          $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
-         // SHOULD THE SLUG ABOVE BE ESCAPED?
+         // SHOULD THE SLUG ABOVE BE ESCAPED IN SOME MANNER?
       }
 
 
