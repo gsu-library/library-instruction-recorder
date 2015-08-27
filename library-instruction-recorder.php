@@ -399,7 +399,7 @@ if(!class_exists('LIR')) {
          <div class="wrap">
             <h2>
                <?php
-               echo $this->options['name'];
+               echo esc_html($this->options['name']);
                if(!$subscriber) { echo ' <a href="'.$baseUrl.'-add-a-class" class="add-new-h2">Add a Class</a>'; }
                ?>
             </h2>
@@ -587,6 +587,8 @@ if(!class_exists('LIR')) {
          $error = array();
          $timeStamp = current_time('timestamp');
 
+         // Remove added slashes!
+         if(!empty($_POST)) { $_POST = stripslashes_deep($_POST); }
 
          // Prepare required meta fields (so we can check these).
          $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
@@ -727,6 +729,7 @@ if(!class_exists('LIR')) {
                      $user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->users." ORDER BY display_name");
 
                      foreach($user as $u) {
+                        // Hide admin account.
                         if($u->display_name == "admin") { continue; }
                         echo '<option';
 
@@ -747,7 +750,7 @@ if(!class_exists('LIR')) {
                            echo ' selected="selected"';
                         }
 
-                        echo ' value="'.$u->display_name.'">'.$u->display_name.'</option>';
+                        echo ' value="'.esc_attr($u->display_name).'">'.esc_html($u->display_name).'</option>';
                      }
                      ?>
 
@@ -762,10 +765,10 @@ if(!class_exists('LIR')) {
                         if($u->display_name == "admin") { continue; }
 
                         if(!$classAdded && isset($_POST['librarian2_name']) && ($u->display_name == $_POST['librarian2_name'])) {
-                           echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
+                           echo '<option value="'.esc_attr($u->display_name).'" selected="selected">'.esc_html($u->display_name).'</option>';
                         }
                         else {
-                           echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';
+                           echo '<option value="'.esc_attr($u->display_name).'">'.esc_html($u->display_name).'</option>';
                         }
                      }
                      ?>
@@ -774,19 +777,19 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>*Instructor Name</th>
-                     <td><input type="text" name="instructor_name" value="<?php if(!$classAdded && !empty($_POST['instructor_name'])) echo $_POST['instructor_name']; ?>" /></td>
+                     <td><input type="text" name="instructor_name" value="<?php if(!$classAdded && !empty($_POST['instructor_name'])) echo esc_attr($_POST['instructor_name']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>Instructor Email</th>
-                     <td><input type="email" name="instructor_email" value="<?php if(!$classAdded && !empty($_POST['instructor_email'])) echo $_POST['instructor_email']; ?>" /></td>
+                     <td><input type="email" name="instructor_email" value="<?php if(!$classAdded && !empty($_POST['instructor_email'])) echo esc_attr($_POST['instructor_email']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>Instructor Phone</th>
-                     <td><input type="tel" name="instructor_phone" value="<?php if(!$classAdded && !empty($_POST['instructor_phone'])) echo $_POST['instructor_phone']; ?>" /></td>
+                     <td><input type="tel" name="instructor_phone" value="<?php if(!$classAdded && !empty($_POST['instructor_phone'])) echo esc_attr($_POST['instructor_phone']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>Class Description</th>
-                     <td><textarea id="classDescription" name="class_description"><?php if(!$classAdded && !empty($_POST['class_description'])) echo $_POST['class_description']; ?></textarea></td>
+                     <td><textarea id="classDescription" name="class_description"><?php if(!$classAdded && !empty($_POST['class_description'])) echo esc_textarea($_POST['class_description']); ?></textarea></td>
                   </tr>
                   <tr>
                      <th>*Department/Group</th>
@@ -796,11 +799,11 @@ if(!class_exists('LIR')) {
 
                            <?php
                            foreach($departmentGroup as $x) {
-                              if(!$classAdded && isset($_POST['department_group']) && (esc_attr($x) == $_POST['department_group'])) {
-                                 echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
+                              if(!$classAdded && isset($_POST['department_group']) && ($x == $_POST['department_group'])) {
+                                 echo '<option value="'.esc_attr($x).'" selected="selected">'.esc_html($x).'</option>';
                               }
                               else {
-                                 echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+                                 echo '<option value="'.esc_attr($x).'">'.esc_html($x).'</option>';
                               }
                            }
                            ?>
@@ -809,7 +812,7 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>Course Number</th>
-                     <td><input type="text" name="course_number" value="<?php if(!$classAdded && !empty($_POST['course_number'])) echo $_POST['course_number']; ?>" /></td>
+                     <td><input type="text" name="course_number" value="<?php if(!$classAdded && !empty($_POST['course_number'])) echo esc_attr($_POST['course_number']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>*Class Date (M/D/YYYY)</th>
@@ -819,7 +822,7 @@ if(!class_exists('LIR')) {
                      echo '<input type="text" class="'.self::SLUG.'-date" name="class_date" value="';
 
                      if(!$classAdded && !empty($_POST['class_date'])) {
-                        echo $_POST['class_date'];
+                        echo esc_attr($_POST['class_date']);
                      }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
                         echo date('n/j/Y', strtotime($_POST['class_start'], $timeStamp));
@@ -851,7 +854,7 @@ if(!class_exists('LIR')) {
                      }
                      ?>
 
-                     <td><input type="text" name="class_time" value="<?= $time; ?>" /> <label>*Length</label>
+                     <td><input type="text" name="class_time" value="<?= esc_attr($time); ?>" /> <label>*Length</label><?php // Don't need to escape time but why not. ?>
                         <select name="class_length">
                            <option value="0">&nbsp;</option>
                            <?php
@@ -879,11 +882,11 @@ if(!class_exists('LIR')) {
                          foreach($classLocation as $x) {
                             echo '<option value="'.esc_attr($x).'"';
 
-                            if(!$classAdded && isset($_POST['class_location']) && ($_POST['class_location'] == esc_attr($x))) {
+                            if(!$classAdded && isset($_POST['class_location']) && ($_POST['class_location'] == $x)) {
                                echo ' selected="selected"';
                             }
 
-                            echo '>'.$x.'</option>';
+                            echo '>'.esc_html($x).'</option>';
                          }
                          ?>
 
@@ -898,11 +901,11 @@ if(!class_exists('LIR')) {
                         foreach($classType as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && isset($_POST['class_type']) && ($_POST['class_type'] == esc_attr($x))) {
+                           if(!$classAdded && isset($_POST['class_type']) && ($_POST['class_type'] == $x)) {
                               echo ' selected="selected"';
                            }
 
-                           echo '>'.$x.'</option>';
+                           echo '>'.esc_html($x).'</option>';
                         }
                         ?>
 
@@ -917,11 +920,11 @@ if(!class_exists('LIR')) {
                         foreach($audience as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && isset($_POST['audience']) && ($_POST['audience'] == esc_attr($x))) {
+                           if(!$classAdded && isset($_POST['audience']) && ($_POST['audience'] == $x)) {
                               echo ' selected="selected"';
                            }
 
-                           echo '>'.$x.'</option>';
+                           echo '>'.esc_html($x).'</option>';
                         }
                         ?>
 
@@ -940,7 +943,7 @@ if(!class_exists('LIR')) {
                      $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $tempID, OBJECT));
 
                      foreach($flags as $f) {
-                        echo '<tr><th>'.$f->name.'</th>';
+                        echo '<tr><th>'.esc_html($f->name).'</th>';
                         echo '<td><input type="checkbox" name="flagValue'.$i.'" ';
 
                         if($f->value) {
@@ -958,7 +961,7 @@ if(!class_exists('LIR')) {
 
                      foreach($flags as $name => $isEnabled) {
                         if($isEnabled) {
-                           echo '<tr><th>'.$name.'</th>';
+                           echo '<tr><th>'.esc_html($name).'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$i.'" />';
                            echo '<input type="hidden" name="flagName'.$i.'" value="'.esc_attr($name).'" /></td></tr>';
                            $i++;
@@ -975,7 +978,7 @@ if(!class_exists('LIR')) {
                         $d = substr($name, -1, 1);
 
                         if(!empty($_POST[$name])) {
-                           echo '<tr><th>'.$_POST[$name].'</th>';
+                           echo '<tr><th>'.esc_html($_POST[$name]).'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$d.'"'; if(isset($_POST['flagValue'.$d]) && $_POST['flagValue'.$d] == 'on') { echo ' checked="checked"'; } echo ' />';
                            echo '<input type="hidden" name="flagName'.$d.'" value="'.esc_attr($_POST[$name]).'" /></td></tr>';
                         }
@@ -985,7 +988,7 @@ if(!class_exists('LIR')) {
 
                   <tr>
                      <th>Number of Students Attended</th>
-                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && isset($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
+                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && isset($_POST['attendance'])) echo esc_attr($_POST['attendance']); ?>" /></td>
                   </tr>
                </table>
 
@@ -1071,7 +1074,7 @@ if(!class_exists('LIR')) {
          $myQuery .= ' class_description = ';
          if(empty($_POST['class_description'])) { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['class_description']); }
          $myQuery .= ' course_number = ';
-         if(empty($_POST['course_number']))     { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['course_number']); }
+         if(empty($_POST['course_number']))     { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, sanitize_text_field($_POST['course_number'])); }
 
          // Attendance is a special case since we differentiate between 0 and empty.
          $myQuery .= ' attendance = ';
@@ -1283,7 +1286,7 @@ if(!class_exists('LIR')) {
          if($result && $fileOutput) {
             // Send the proper header information for a CSV file.
             header("Content-type: text/csv");
-            header("Content-Disposition: attachment; filename=".$fileName);
+            header("Content-Disposition: attachment; filename=".$fileName); // SHOULD THE FILENAME BE ESCAPED?
             header("Pragma: no-cache");
             header("Expires: 0");
 
@@ -1328,7 +1331,7 @@ if(!class_exists('LIR')) {
                      echo '<tr>';
 
                      foreach($line as $l) {
-                        echo '<td>'.$l.'</td>';
+                        echo '<td>'.esc_html($l).'</td>';
                      }
 
                      echo '</tr>';
@@ -1355,6 +1358,9 @@ if(!class_exists('LIR')) {
 
          global $wpdb;
          $this->init($wpdb);
+
+         // Remove added slashes!
+         if(!empty($_POST)) { $_POST = stripslashes_deep($_POST); }
 
          // Get current fields from database.
          $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
@@ -1523,7 +1529,7 @@ if(!class_exists('LIR')) {
                <select id="deptGroupSB" name="deptGroupSB" size="<?= count($departmentGroup) < 10 ? count($departmentGroup) : '10'; ?>">
                   <?php
                   foreach($departmentGroup as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1539,7 +1545,7 @@ if(!class_exists('LIR')) {
                <select id="classLocSB" name="classLocSB" size="<?= count($classLocation) < 10 ? count($classLocation) : '10'; ?>">
                   <?php
                   foreach($classLocation as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1555,7 +1561,7 @@ if(!class_exists('LIR')) {
                <select id="classTypeSB" name="classTypeSB" size="<?= count($classType) < 10 ? count($classType) : '10'; ?>">
                   <?php
                   foreach($classType as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1571,7 +1577,7 @@ if(!class_exists('LIR')) {
                <select id="audienceSB" name="audienceSB" size="<?= count($audience) < 10 ? count($audience) : '10'; ?>">
                   <?php
                   foreach($audience as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1586,7 +1592,7 @@ if(!class_exists('LIR')) {
                <?php
                $i = 1;
                foreach($flags as $name => $value) {
-                  echo '<p><label>Name: <input type="text" name="flagName'.$i.'" value="'.$name.'" /></label>
+                  echo '<p><label>Name: <input type="text" name="flagName'.esc_attr($i).'" value="'.esc_attr($name).'" /></label>
                         <label>Enabled <input type="radio" name="flagEnabled'.$i.'" value="1" '; if($value) { echo 'checked="checked"'; } echo' /></label>
                         <label>Disabled <input type="radio" name="flagEnabled'.$i.'" value="0" '; if(!$value) { echo 'checked="checked"'; } echo' /></label></p>';
 
@@ -1640,19 +1646,19 @@ if(!class_exists('LIR')) {
                <table class="form-table">
                   <tr>
                      <th scope="row">Plugin Name</th>
-                     <td><input type="text" name="<?= self::OPTIONS.'[name]'; ?>" value="<?= $this->options['name']; ?>" /></td>
+                     <td><input type="text" name="<?= self::OPTIONS.'[name]'; ?>" value="<?= esc_attr($this->options['name']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Plugin Slug</th>
-                     <td><input type="text" name="<?= self::OPTIONS.'[slug]'; ?>" value="<?= $this->options['slug']; ?>" /></td>
+                     <td><input type="text" name="<?= self::OPTIONS.'[slug]'; ?>" value="<?= esc_attr($this->options['slug']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Class Length Interval<br /><em class="smaller">(in minutes)</em></th>
-                     <td><input type="number" name="<?= self::OPTIONS.'[intervalLength]'; ?>" value="<?= $this->options['intervalLength'] ?>" /></td>
+                     <td><input type="number" name="<?= self::OPTIONS.'[intervalLength]'; ?>" value="<?= esc_attr($this->options['intervalLength']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Number of Intervals</th>
-                     <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= $this->options['intervalAmount'] ?>" /></td>
+                     <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= esc_attr($this->options['intervalAmount']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Debugging<br /><em class="warning smaller">(this produces a lot of output)</em></th>
@@ -1727,7 +1733,7 @@ if(!class_exists('LIR')) {
             $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;
             $message .= $r->course_number ? ' '.$r->course_number : '';
             $message .= '</a></p>';
-            $message .= '<p>Warmly,<br />'.$this->options['slug'].'</p>';
+            $message .= '<p>Warmly,<br />'.esc_html($this->options['slug']).'</p>';
 
             wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); // From nobody (may have to look into this later)?
          }
@@ -1779,6 +1785,7 @@ if(!class_exists('LIR')) {
          // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
          $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
+         // SHOULD THE SLUG ABOVE BE ESCAPED?
       }
 
 
