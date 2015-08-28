@@ -474,17 +474,17 @@ if(!class_exists('LIR')) {
                   echo '<tr class="'.self::SLUG.'-'.$class->id.'"';
 
                   if($class->class_description) {
-                     echo ' title="'.$class->class_description.'"';
+                     echo ' title="'.esc_attr($class->class_description).'"';
                   }
                   
                   echo '>'; // Closing the <tr...
 
                   echo '<th>&nbsp;</th>'; // Check-column.
 
-                  echo '<td name="Department-Group">'.$class->department_group.'</td>';
+                  echo '<td name="Department-Group">'.esc_html($class->department_group).'</td>';
 
                   if($class->course_number) {
-                     echo '<td name="Course_Number">'.$class->course_number.'</td>';
+                     echo '<td name="Course_Number">'.esc_html($class->course_number).'</td>';
                   }
                   else {
                      echo '<td>&nbsp;</td>';
@@ -500,15 +500,15 @@ if(!class_exists('LIR')) {
                      echo date('n/j/Y (D) g:i A', strtotime($class->class_end, $timeStamp)).'</td>';
                   }
 
-                  echo '<td name="Primary_Librarian">'.$class->librarian_name.'</td>';
+                  echo '<td name="Primary_Librarian">'.esc_html($class->librarian_name).'</td>';
 
                   // Instructor name and email.
                   if($class->instructor_email) {
                      $mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
-                     echo '<td name="Instructor"><a href="'.$mailto.'" title="'.$class->instructor_email.'">'.$class->instructor_name.'</a></td>';
+                     echo '<td name="Instructor"><a href="'.esc_attr($mailto).'" title="'.esc_attr($class->instructor_email).'">'.esc_html($class->instructor_name).'</a></td>';
                   }
                   else {
-                     echo '<td name="Instructor">'.$class->instructor_name.'</td>';
+                     echo '<td name="Instructor">'.esc_html($class->instructor_name).'</td>';
                   }
 
                   // Start Options section.
@@ -532,23 +532,23 @@ if(!class_exists('LIR')) {
 
                   // Hidden class details.
                   echo '<td class="hide otherDetails">';
-                  if($class->librarian2_name) { echo '<span name="Secondary_Librarian">'.$class->librarian2_name.'</span>'; }
-                  if($class->instructor_email) { echo '<span name="Instructor_Email">'.$class->instructor_email.'</span>'; }
-                  if($class->instructor_phone) { echo '<span name="Instructor_Phone">'.$class->instructor_phone.'</span>'; }
-                  echo '<span name="Class_Location">'.$class->class_location.'</span>';
-                  echo '<span name="Class_Type">'.$class->class_type.'</span>';
-                  echo '<span name="Audience">'.$class->audience.'</span>';
-                  if($class->class_description) { echo '<span name="Class_Description">'.$class->class_description.'</span>'; }
+                  if($class->librarian2_name) { echo '<span name="Secondary_Librarian">'.esc_html($class->librarian2_name).'</span>'; }
+                  if($class->instructor_email) { echo '<span name="Instructor_Email">'.esc_html($class->instructor_email).'</span>'; }
+                  if($class->instructor_phone) { echo '<span name="Instructor_Phone">'.esc_html($class->instructor_phone).'</span>'; }
+                  echo '<span name="Class_Location">'.esc_html($class->class_location).'</span>';
+                  echo '<span name="Class_Type">'.esc_html($class->class_type).'</span>';
+                  echo '<span name="Audience">'.esc_html($class->audience).'</span>';
+                  if($class->class_description) { echo '<span name="Class_Description">'.esc_html($class->class_description).'</span>'; }
 
                   // Flags.
                   $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
                   foreach($flags as $f) {
-                     echo '<span name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'">';
+                     echo '<span name="'.esc_attr(preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name'])).'">';
                      echo $f['value'] ? 'yes' : 'no';
                      echo '</span>';
                   }
 
-                  echo '<span name="Attendance">'; echo ($class->attendance === NULL) ? 'Not Yet Recorded' : $class->attendance; echo '</span>';
+                  echo '<span name="Attendance">'; echo ($class->attendance === NULL) ? 'Not Yet Recorded' : esc_html($class->attendance); echo '</span>';
                   echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated, $timeStamp)).'</span>';
                   echo '</td>';
 
