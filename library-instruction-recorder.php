@@ -38,6 +38,7 @@ if(!class_exists('LIR')) {
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
+      const AUTOLOAD = 'no';
       const VERSION = '1.1.4';
       const MIN_VERSION = '3.6';
       const TABLE_POSTS = '_posts';
@@ -47,11 +48,12 @@ if(!class_exists('LIR')) {
       const CHARSET = 'utf8';
       private static $defaultOptions = array(
          'version'         =>  self::VERSION,
-         'debug'           =>  false,
          'name'            =>  self::NAME,
          'slug'            =>  self::SLUG,
          'intervalLength'  =>  15,
-         'intervalAmount'  =>  16
+         'intervalAmount'  =>  16,
+         'emailEnabled'    =>  true,
+         'debug'           =>  false
       );
       private $options;
       private $tables;
@@ -123,7 +125,7 @@ if(!class_exists('LIR')) {
 
          // If the option already exists it will not be overwritten.
          // Do not autoload the options, they are only used on admin pages.
-         add_option(self::OPTIONS, self::$defaultOptions, '', 'no');
+         add_option(self::OPTIONS, self::$defaultOptions, '', self::AUTOLOAD);
 
          // Add LIR tables to the database if they do not exist.
          global $wpdb;
@@ -249,8 +251,16 @@ if(!class_exists('LIR')) {
          $this->init($wpdb);
 
          // PLUGIN UPDATES ARE PERFORMED HERE.
-         // Run the update that fixes the last_updated field in the posts table.
+         // Run the update that fixes the last_updated field in the posts table and does some stuff with options.
          if(version_compare('1.1.4', $this->options['version'], '>')) {
+            // Add email reminders option.
+            $this->options['emailEnabled'] = true;
+            // Make debug option bool.
+            $this->options['debug'] = ($this->options['debug'] == 'on') ? true : false;
+            update_option(self::OPTIONS, $this->options, self::AUTOLOAD);
+
+
+            // Fix table.
             $query = 'ALTER TABLE '.$this->tables['posts'].'
                          MODIFY COLUMN last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
 
@@ -261,9 +271,10 @@ if(!class_exists('LIR')) {
          // If plugin options don't reflect the plugin version, make it so.
          if(version_compare(self::VERSION, $this->options['version'], '!=')) {
             $this->options['version'] = self::VERSION;
-            update_option(self::OPTIONS, $this->options);
+            update_option(self::OPTIONS, $this->options, self::AUTOLOAD);
          }
 
+         // If no settings are present this will end up registering them with autoload set to yes!
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
 
          // Setup/make sure scheduler is setup.
@@ -1627,13 +1638,19 @@ if(!class_exists('LIR')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         $this->init();
+         global $wpdb;
+         $this->init($wpdb);
 
          ?>
          <div class="wrap">
             <h2>Settings</h2>
 
             <?php
+            if($this->options['debug']) {
+               $row = $wpdb->get_row("SELECT * FROM ".$wpdb->prefix."options WHERE option_name = '".self::OPTIONS."'", OBJECT);
+               echo '<pre>'.print_r($row, true).'</pre>';
+            }
+
             if(!empty($_GET['settings-updated'])) {
                echo '<div id="message" class="updated '.self::SLUG.'-fade">';
                echo 'The settings have been updated!';
@@ -1661,8 +1678,11 @@ if(!class_exists('LIR')) {
                      <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= esc_attr($this->options['intervalAmount']); ?>" /></td>
                   </tr>
                   <tr>
+                     <th scope="row">Send Email Reminders<br /><em class="smaller">(to remind librarians to add class attendance after the class has ended)</em></th>
+                     <td><input type="checkbox" name="<?= self::OPTIONS.'[emailEnabled]'; ?>" <?php checked($this->options['emailEnabled'], true); ?> /> Enabled</td>
+                  <tr>
                      <th scope="row">Debugging<br /><em class="warning smaller">(this produces a lot of output)</em></th>
-                     <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], 'on'); ?> /> Enabled</td>
+                     <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], true); ?> /> Enabled</td>
                   </tr>
                </table>
 
@@ -1696,7 +1716,8 @@ if(!class_exists('LIR')) {
          $input = array_map("trim", $input);
 
          $input['version'] = $this->options['version'];
-         $input['debug'] = (isset($input['debug']) && ($input['debug'] == 'on')) ? 'on' : '';
+         $input['debug'] = (isset($input['debug']) && ($input['debug'] == 'on')) ? true : false;
+         $input['emailEnabled'] = (isset($input['emailEnabled']) && ($input['emailEnabled'] == 'on')) ? true: false;
          $input['name'] = (empty($input['name'])) ? self::$defaultOptions['name'] : sanitize_text_field($input['name']);
          $input['slug'] = (empty($input['slug'])) ? self::$defaultOptions['slug'] : sanitize_text_field($input['slug']);
          $input['intervalLength'] = (absint($input['intervalLength']) < 1) ? self::$defaultOptions['intervalLength'] : absint($input['intervalLength']);
