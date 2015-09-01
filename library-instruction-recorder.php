@@ -616,8 +616,8 @@ if(!class_exists('LIR')) {
                $_POST['submitted'] = NULL; // Ensures the class is never processed for submission.
             }
          }
-         // If this is a copy class request.
-         else if(isset($_GET['copy'])) {
+         // If this is a copy class request (only if it has not been submitted).
+         else if(isset($_GET['copy']) && !isset($_POST['submitted'])) {
             $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['copy']));
 
             // Save DB to POST so fields can be populated from same pool during editing and failed submissions.
@@ -1220,7 +1220,7 @@ if(!class_exists('LIR')) {
       private function generateReport($fileOutput = true) {
          global $wpdb;
          $this->init($wpdb);
-         $fileName = $this->options['slug'];
+         $fileName = preg_replace('/[^a-z]/i', '', $this->options['slug']);
          $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
                    class_start, class_end, class_location, class_type, audience, class_description, department_group,
                    course_number, attendance, u.display_name as owner, last_updated,
@@ -1237,19 +1237,19 @@ if(!class_exists('LIR')) {
             if(!empty($_POST['librarian_name'])) {
                $query .= ' librarian_name = %s AND';
                array_push($options, $_POST['librarian_name']);
-               $fileName .= ' '.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
+               $fileName .= '_'.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
             }
             if(!empty($_POST['startDate'])) {
                $date = date('Y-m-d', strtotime($_POST['startDate'], $timeStamp));
                $query .= ' class_start >= %s AND';
                array_push($options, $date.' 00:00:00');
-               $fileName .= ' starting '.$date;
+               $fileName .= '_starting_'.$date;
             }
             if(!empty($_POST['endDate'])) {
                $date = date('Y-m-d', strtotime($_POST['endDate'], $timeStamp));
                $query .= ' class_start <= %s AND';
                array_push($options, $date.' 23:59:59');
-               $fileName .= ' ending '.$date;
+               $fileName .= '_ending_'.$date;
             }
 
             // Remove trailing AND from query.
@@ -1259,7 +1259,7 @@ if(!class_exists('LIR')) {
             $query = $wpdb->prepare($query, $options);
          }
          else {
-            $fileName .= ' all';
+            $fileName .= '_all';
          }
 
          $fileName .= '.csv';
