@@ -70,7 +70,7 @@ You can submit issue tickets to our [Bitbucket issue tracker](https://bitbucket.
 == Upgrade Notice ==
 
 = 1.1.4 =
-Fixes date/time/timezone, last updated field, single quote/forward slash, report, and copy issues. THIS UPDATE ALTERS THE LIR_POSTS TABLE, PLEASE BACK UP YOUR TABLE DATA BEFORE UPDATING.
+Fixes date/time/timezone, last updated field, single quote/forward slash, report, and copy issues. Adds an email setting. THIS UPDATE ALTERS THE LIR_POSTS TABLE, PLEASE BACK UP YOUR TABLE DATA BEFORE UPDATING.
 
 = 1.1.3 =
 Fixes the uninstaller!
@@ -103,6 +103,7 @@ Initial release so why not install?
 * Escaped a lot of fields that were not already escaped.
 * Report downloads in Firefox are fixed.
 * Copying a class now allows all fields to be edited before being submitted.
+* Added an option to disable email reminders.
 
 = 1.1.3 =
 * Doesn't look for WP_UNINSTALL_PLUGIN flag in the uninstall method now.
