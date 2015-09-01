@@ -1730,7 +1730,7 @@ if(!class_exists('LIR')) {
       /*
          Function: emailReminders
             Sends out email reminders to users who have a class that does not have the attendance
-            filled out that eneded before today.
+            filled out that eneded before today (if enabled).
 
          Outputs:
             HTML emails through WordPress.
@@ -1741,6 +1741,8 @@ if(!class_exists('LIR')) {
       public function emailReminders() {
          global $wpdb;
          $this->init($wpdb);
+
+         if(!$this->options['emailEnabled']) { return; }
 
          add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // So we can send the email in HTML.
 
