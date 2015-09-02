@@ -259,7 +259,6 @@ if(!class_exists('LIR')) {
             $this->options['debug'] = ($this->options['debug'] == 'on') ? true : false;
             update_option(self::OPTIONS, $this->options, self::AUTOLOAD);
 
-
             // Fix table.
             $query = 'ALTER TABLE '.$this->tables['posts'].'
                          MODIFY COLUMN last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
