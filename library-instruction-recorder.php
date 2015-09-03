@@ -1677,7 +1677,7 @@ if(!class_exists('LIR')) {
                      <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= esc_attr($this->options['intervalAmount']); ?>" /></td>
                   </tr>
                   <tr>
-                     <th scope="row">Send Email Reminders<br /><em class="smaller">(to remind librarians to add class attendance after the class has ended)</em></th>
+                     <th scope="row">Email Reminders<br /><em class="smaller">(to remind librarians to add class attendance after the class has ended)</em></th>
                      <td><input type="checkbox" name="<?= self::OPTIONS.'[emailEnabled]'; ?>" <?php checked($this->options['emailEnabled'], true); ?> /> Enabled</td>
                   <tr>
                      <th scope="row">Debugging<br /><em class="warning smaller">(this produces a lot of output)</em></th>
