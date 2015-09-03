@@ -101,7 +101,7 @@ Initial release so why not install?
 * Alters posts table to be in line with the above.
 * Strips extra slashes that WordPress adds to POST/GET/&c. variables (this was causing extra slashes to be added in front of single quotes).
 * Escaped a lot of fields that were not already escaped.
-* Report downloads in Firefox are fixed.
+* Report downloads in Firefox are fixed (removed spaces from file name).
 * Copying a class now allows all fields to be edited before being submitted.
 * Added an option to disable email reminders.
 
