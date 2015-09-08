@@ -3,7 +3,7 @@
    Plugin Name: Library Instruction Recorder
    Plugin URI: http://bitbucket.org/gsulibwebmaster/library-instruction-recorder
    Description: A plugin for recording library instruction events and their associated data.
-   Version: 1.1.3
+   Version: 1.1.4
    Author: Georgia State University Library
    Author URI: http://library.gsu.edu/
    License: GPLv3
@@ -38,20 +38,22 @@ if(!class_exists('LIR')) {
       const SLUG = 'LIR';
       const OPTIONS = 'lir_options';
       const OPTIONS_GROUP = 'lir_options_group';
-      const VERSION = '1.1.3';
+      const AUTOLOAD = 'no';
+      const VERSION = '1.1.4';
       const MIN_VERSION = '3.6';
       const TABLE_POSTS = '_posts';
       const TABLE_META = '_meta';
       const TABLE_FLAGS = '_flags';
-      const SCHEDULE_TIME = '01:00:00';
+      const SCHEDULE_TIME = '06:00:00';
       const CHARSET = 'utf8';
       private static $defaultOptions = array(
          'version'         =>  self::VERSION,
-         'debug'           =>  false,
          'name'            =>  self::NAME,
          'slug'            =>  self::SLUG,
          'intervalLength'  =>  15,
-         'intervalAmount'  =>  16
+         'intervalAmount'  =>  16,
+         'emailEnabled'    =>  true,
+         'debug'           =>  false
       );
       private $options;
       private $tables;
@@ -123,7 +125,7 @@ if(!class_exists('LIR')) {
 
          // If the option already exists it will not be overwritten.
          // Do not autoload the options, they are only used on admin pages.
-         add_option(self::OPTIONS, self::$defaultOptions, '', 'no');
+         add_option(self::OPTIONS, self::$defaultOptions, '', self::AUTOLOAD);
 
          // Add LIR tables to the database if they do not exist.
          global $wpdb;
@@ -151,7 +153,7 @@ if(!class_exists('LIR')) {
                       course_number varchar(255) DEFAULT NULL,
                       attendance smallint(6) UNSIGNED DEFAULT NULL,
                       owner_id bigint(20) NOT NULL,
-                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                      last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                       last_updated_by bigint(20) NOT NULL,
                       PRIMARY KEY (id)
                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;";
@@ -245,20 +247,38 @@ if(!class_exists('LIR')) {
             <settingsPage>, <sanitizeSettings>, and <generateReport>
       */
       public function adminInit() {
-         $this->init();
+         global $wpdb;
+         $this->init($wpdb);
 
-         // Plugin upgrades are performed here.
-         if($this->options['version'] != self::VERSION) {
-            // Update options to current version.
+         // PLUGIN UPDATES ARE PERFORMED HERE.
+         // Run the update that fixes the last_updated field in the posts table and does some stuff with options.
+         if(version_compare('1.1.4', $this->options['version'], '>')) {
+            // Add email reminders option.
+            $this->options['emailEnabled'] = true;
+            // Make debug option bool.
+            $this->options['debug'] = ($this->options['debug'] == 'on') ? true : false;
+            update_option(self::OPTIONS, $this->options, self::AUTOLOAD);
+
+            // Fix table.
+            $query = 'ALTER TABLE '.$this->tables['posts'].'
+                         MODIFY COLUMN last_updated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP';
+
+            // dbDelta should be used for ALTER statements.
+            require_once(ABSPATH.'wp-admin/includes/upgrade.php');
+            dbDelta($query);
+         }
+         // If plugin options don't reflect the plugin version, make it so.
+         if(version_compare(self::VERSION, $this->options['version'], '!=')) {
             $this->options['version'] = self::VERSION;
-            update_option(self::OPTIONS, $this->options);
+            update_option(self::OPTIONS, $this->options, self::AUTOLOAD);
          }
 
+         // If no settings are present this will end up registering them with autoload set to yes!
          register_setting(self::OPTIONS_GROUP, self::OPTIONS, array(&$this, 'sanitizeSettings'));
 
          // Setup/make sure scheduler is setup.
          if(!wp_next_scheduled(self::SLUG.'_schedule')) {
-            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', time()), 'daily', self::SLUG.'_schedule');
+            wp_schedule_event(strtotime(self::SCHEDULE_TIME.' +1 day', current_time('timestamp')), 'daily', self::SLUG.'_schedule');
          }
 
          // Generates and sends CSV file (before standard headers are sent).
@@ -345,6 +365,7 @@ if(!class_exists('LIR')) {
          $baseUrl = admin_url('admin.php?page='.self::SLUG);
          $delete = (!empty($_GET['delete'])) ? $_GET['delete'] : NULL;
          $classRemoved = NULL;
+         $timeStamp = current_time('timestamp');
 
 
          // Handle deletion if present.
@@ -388,7 +409,7 @@ if(!class_exists('LIR')) {
          <div class="wrap">
             <h2>
                <?php
-               echo $this->options['name'];
+               echo esc_html($this->options['name']);
                if(!$subscriber) { echo ' <a href="'.$baseUrl.'-add-a-class" class="add-new-h2">Add a Class</a>'; }
                ?>
             </h2>
@@ -398,9 +419,9 @@ if(!class_exists('LIR')) {
             if($this->options['debug']) {
                echo '<div id="message" class="error">';
                echo '<p><strong>Time</strong><br />';
-               echo time().' - '.date('c', time()).'</p>';
+               echo $timeStamp.' - '.date('c', $timeStamp).'</p>';
                echo '<p><strong>First Schedule?</strong><br />';
-               echo strtotime(self::SCHEDULE_TIME.' +1 day', time()).' - '.date('c', strtotime(self::SCHEDULE_TIME.' +1 day', time())).'</p>';
+               echo strtotime(self::SCHEDULE_TIME.' +1 day', $timeStamp).' - '.date('c', strtotime(self::SCHEDULE_TIME.' +1 day', $timeStamp)).'</p>';
                echo '<p><strong>Next Schedule</strong><br />';
                echo wp_next_scheduled(self::SLUG.'_schedule').' - '.date('c', wp_next_scheduled(self::SLUG.'_schedule')).'</p>';
 
@@ -463,17 +484,17 @@ if(!class_exists('LIR')) {
                   echo '<tr class="'.self::SLUG.'-'.$class->id.'"';
 
                   if($class->class_description) {
-                     echo ' title="'.$class->class_description.'"';
+                     echo ' title="'.esc_attr($class->class_description).'"';
                   }
                   
                   echo '>'; // Closing the <tr...
 
                   echo '<th>&nbsp;</th>'; // Check-column.
 
-                  echo '<td name="Department-Group">'.$class->department_group.'</td>';
+                  echo '<td name="Department-Group">'.esc_html($class->department_group).'</td>';
 
                   if($class->course_number) {
-                     echo '<td name="Course_Number">'.$class->course_number.'</td>';
+                     echo '<td name="Course_Number">'.esc_html($class->course_number).'</td>';
                   }
                   else {
                      echo '<td>&nbsp;</td>';
@@ -481,23 +502,23 @@ if(!class_exists('LIR')) {
 
                   // Display start date & time - end date & time.
                   if(substr($class->class_start, 0, 10) == substr($class->class_end, 0, 10)) {
-                     echo '<td name="Date-Time"><span class="hide">'.$class->class_start.' - '.$class->class_end.'</span>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start));
-                     echo date('g:i A', strtotime($class->class_end)).'</td>';
+                     echo '<td name="Date-Time"><span class="hide">'.$class->class_start.' - '.$class->class_end.'</span>'.date('n/j/Y (D) g:i A - ', strtotime($class->class_start, $timeStamp));
+                     echo date('g:i A', strtotime($class->class_end, $timeStamp)).'</td>';
                   }
                   else { // If the end time is not on the same day as the start time.
-                     echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A -', strtotime($class->class_start)).'<br />';
-                     echo date('n/j/Y (D) g:i A', strtotime($class->class_end)).'</td>';
+                     echo '<td name="Date-Time">'.date('n/j/Y (D) g:i A -', strtotime($class->class_start, $timeStamp)).'<br />';
+                     echo date('n/j/Y (D) g:i A', strtotime($class->class_end, $timeStamp)).'</td>';
                   }
 
-                  echo '<td name="Primary_Librarian">'.$class->librarian_name.'</td>';
+                  echo '<td name="Primary_Librarian">'.esc_html($class->librarian_name).'</td>';
 
                   // Instructor name and email.
                   if($class->instructor_email) {
                      $mailto = esc_attr('mailto:'.$class->instructor_name.' <'.$class->instructor_email.'>');
-                     echo '<td name="Instructor"><a href="'.$mailto.'" title="'.$class->instructor_email.'">'.$class->instructor_name.'</a></td>';
+                     echo '<td name="Instructor"><a href="'.esc_attr($mailto).'" title="'.esc_attr($class->instructor_email).'">'.esc_html($class->instructor_name).'</a></td>';
                   }
                   else {
-                     echo '<td name="Instructor">'.$class->instructor_name.'</td>';
+                     echo '<td name="Instructor">'.esc_html($class->instructor_name).'</td>';
                   }
 
                   // Start Options section.
@@ -521,24 +542,24 @@ if(!class_exists('LIR')) {
 
                   // Hidden class details.
                   echo '<td class="hide otherDetails">';
-                  if($class->librarian2_name) { echo '<span name="Secondary_Librarian">'.$class->librarian2_name.'</span>'; }
-                  if($class->instructor_email) { echo '<span name="Instructor_Email">'.$class->instructor_email.'</span>'; }
-                  if($class->instructor_phone) { echo '<span name="Instructor_Phone">'.$class->instructor_phone.'</span>'; }
-                  echo '<span name="Class_Location">'.$class->class_location.'</span>';
-                  echo '<span name="Class_Type">'.$class->class_type.'</span>';
-                  echo '<span name="Audience">'.$class->audience.'</span>';
-                  if($class->class_description) { echo '<span name="Class_Description">'.$class->class_description.'</span>'; }
+                  if($class->librarian2_name) { echo '<span name="Secondary_Librarian">'.esc_html($class->librarian2_name).'</span>'; }
+                  if($class->instructor_email) { echo '<span name="Instructor_Email">'.esc_html($class->instructor_email).'</span>'; }
+                  if($class->instructor_phone) { echo '<span name="Instructor_Phone">'.esc_html($class->instructor_phone).'</span>'; }
+                  echo '<span name="Class_Location">'.esc_html($class->class_location).'</span>';
+                  echo '<span name="Class_Type">'.esc_html($class->class_type).'</span>';
+                  echo '<span name="Audience">'.esc_html($class->audience).'</span>';
+                  if($class->class_description) { echo '<span name="Class_Description">'.esc_html($class->class_description).'</span>'; }
 
                   // Flags.
                   $flags = $wpdb->get_results('SELECT name, value FROM '.$this->tables['flags']. ' WHERE posts_id = '.$class->id ,ARRAY_A);
                   foreach($flags as $f) {
-                     echo '<span name="'.preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name']).'">';
+                     echo '<span name="'.esc_attr(preg_replace(array('/[^0-9a-zA-Z\/]/', '/\//'), array('_', '-'), $f['name'])).'">';
                      echo $f['value'] ? 'yes' : 'no';
                      echo '</span>';
                   }
 
-                  echo '<span name="Attendance">'; echo ($class->attendance === NULL) ? 'Not Yet Recorded' : $class->attendance; echo '</span>';
-                  echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated)).'</span>';
+                  echo '<span name="Attendance">'; echo ($class->attendance === NULL) ? 'Not Yet Recorded' : esc_html($class->attendance); echo '</span>';
+                  echo '<span name="Last_Updated">'.date('n/j/Y g:i A', strtotime($class->last_updated, $timeStamp)).'</span>';
                   echo '</td>';
 
                   echo '</td></tr>';
@@ -574,7 +595,10 @@ if(!class_exists('LIR')) {
          $baseUrl = admin_url('admin.php?page='.self::SLUG.'-add-a-class');
          $classAdded = NULL;
          $error = array();
+         $timeStamp = current_time('timestamp');
 
+         // Remove added slashes!
+         if(!empty($_POST)) { $_POST = stripslashes_deep($_POST); }
 
          // Prepare required meta fields (so we can check these).
          $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
@@ -602,8 +626,8 @@ if(!class_exists('LIR')) {
                $_POST['submitted'] = NULL; // Ensures the class is never processed for submission.
             }
          }
-         // If this is a copy class request.
-         else if(isset($_GET['copy'])) {
+         // If this is a copy class request (only if it has not been submitted).
+         else if(isset($_GET['copy']) && !isset($_POST['submitted'])) {
             $class = $wpdb->get_row($wpdb->prepare("SELECT * FROM ".$this->tables['posts']." WHERE id = %d", $_GET['copy']));
 
             // Save DB to POST so fields can be populated from same pool during editing and failed submissions.
@@ -715,6 +739,7 @@ if(!class_exists('LIR')) {
                      $user = $wpdb->get_results("SELECT display_name FROM ".$wpdb->users." ORDER BY display_name");
 
                      foreach($user as $u) {
+                        // Hide admin account.
                         if($u->display_name == "admin") { continue; }
                         echo '<option';
 
@@ -735,7 +760,7 @@ if(!class_exists('LIR')) {
                            echo ' selected="selected"';
                         }
 
-                        echo ' value="'.$u->display_name.'">'.$u->display_name.'</option>';
+                        echo ' value="'.esc_attr($u->display_name).'">'.esc_html($u->display_name).'</option>';
                      }
                      ?>
 
@@ -750,10 +775,10 @@ if(!class_exists('LIR')) {
                         if($u->display_name == "admin") { continue; }
 
                         if(!$classAdded && isset($_POST['librarian2_name']) && ($u->display_name == $_POST['librarian2_name'])) {
-                           echo '<option value="'.$u->display_name.'" selected="selected">'.$u->display_name.'</option>';
+                           echo '<option value="'.esc_attr($u->display_name).'" selected="selected">'.esc_html($u->display_name).'</option>';
                         }
                         else {
-                           echo '<option value="'.$u->display_name.'">'.$u->display_name.'</option>';
+                           echo '<option value="'.esc_attr($u->display_name).'">'.esc_html($u->display_name).'</option>';
                         }
                      }
                      ?>
@@ -762,19 +787,19 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>*Instructor Name</th>
-                     <td><input type="text" name="instructor_name" value="<?php if(!$classAdded && !empty($_POST['instructor_name'])) echo $_POST['instructor_name']; ?>" /></td>
+                     <td><input type="text" name="instructor_name" value="<?php if(!$classAdded && !empty($_POST['instructor_name'])) echo esc_attr($_POST['instructor_name']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>Instructor Email</th>
-                     <td><input type="email" name="instructor_email" value="<?php if(!$classAdded && !empty($_POST['instructor_email'])) echo $_POST['instructor_email']; ?>" /></td>
+                     <td><input type="email" name="instructor_email" value="<?php if(!$classAdded && !empty($_POST['instructor_email'])) echo esc_attr($_POST['instructor_email']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>Instructor Phone</th>
-                     <td><input type="tel" name="instructor_phone" value="<?php if(!$classAdded && !empty($_POST['instructor_phone'])) echo $_POST['instructor_phone']; ?>" /></td>
+                     <td><input type="tel" name="instructor_phone" value="<?php if(!$classAdded && !empty($_POST['instructor_phone'])) echo esc_attr($_POST['instructor_phone']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>Class Description</th>
-                     <td><textarea id="classDescription" name="class_description"><?php if(!$classAdded && !empty($_POST['class_description'])) echo $_POST['class_description']; ?></textarea></td>
+                     <td><textarea id="classDescription" name="class_description"><?php if(!$classAdded && !empty($_POST['class_description'])) echo esc_textarea($_POST['class_description']); ?></textarea></td>
                   </tr>
                   <tr>
                      <th>*Department/Group</th>
@@ -784,11 +809,11 @@ if(!class_exists('LIR')) {
 
                            <?php
                            foreach($departmentGroup as $x) {
-                              if(!$classAdded && isset($_POST['department_group']) && (esc_attr($x) == $_POST['department_group'])) {
-                                 echo '<option value="'.esc_attr($x).'" selected="selected">'.$x.'</option>';
+                              if(!$classAdded && isset($_POST['department_group']) && ($x == $_POST['department_group'])) {
+                                 echo '<option value="'.esc_attr($x).'" selected="selected">'.esc_html($x).'</option>';
                               }
                               else {
-                                 echo '<option value="'.esc_attr($x).'">'.$x.'</option>';
+                                 echo '<option value="'.esc_attr($x).'">'.esc_html($x).'</option>';
                               }
                            }
                            ?>
@@ -797,7 +822,7 @@ if(!class_exists('LIR')) {
                   </tr>
                   <tr>
                      <th>Course Number</th>
-                     <td><input type="text" name="course_number" value="<?php if(!$classAdded && !empty($_POST['course_number'])) echo $_POST['course_number']; ?>" /></td>
+                     <td><input type="text" name="course_number" value="<?php if(!$classAdded && !empty($_POST['course_number'])) echo esc_attr($_POST['course_number']); ?>" /></td>
                   </tr>
                   <tr>
                      <th>*Class Date (M/D/YYYY)</th>
@@ -807,13 +832,13 @@ if(!class_exists('LIR')) {
                      echo '<input type="text" class="'.self::SLUG.'-date" name="class_date" value="';
 
                      if(!$classAdded && !empty($_POST['class_date'])) {
-                        echo $_POST['class_date'];
+                        echo esc_attr($_POST['class_date']);
                      }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
-                        echo date('n/j/Y', strtotime($_POST['class_start']));
+                        echo date('n/j/Y', strtotime($_POST['class_start'], $timeStamp));
                      }
                      else {
-                        echo date('n/j/Y');
+                        echo date('n/j/Y', $timeStamp);
                      }
 
                      echo '" />';
@@ -826,21 +851,20 @@ if(!class_exists('LIR')) {
 
                      <?php
                      if(!$classAdded && !empty($_POST['class_time'])) {
-                        $time = date('g:i A', strtotime($_POST['class_time']));
+                        $time = date('g:i A', strtotime($_POST['class_time'], $timeStamp));
                      }
                      else if(!$classAdded && !empty($_POST['class_start'])) {
-                        $time = date('g:i A', strtotime($_POST['class_start']));
-                        $_POST['class_length'] = (strtotime($_POST['class_end']) - strtotime($_POST['class_start'])) / 60;
+                        $time = date('g:i A', strtotime($_POST['class_start'], $timeStamp));
+                        $_POST['class_length'] = (strtotime($_POST['class_end'], $timeStamp) - strtotime($_POST['class_start'], $timeStamp)) / 60;
                      }
                      else {
-                        $this->setTimeZone();
-
-                        $minutes = date('i', strtotime("+15 minutes")) - date('i', strtotime("+15 minutes")) % 15;
-                        $time = date('g:', strtotime("+15 minutes")).(($minutes) ? $minutes : '00').date(' A');
+                        // Timezone was set here before.
+                        $minutes = date('i', strtotime("+15 minutes", $timeStamp)) - date('i', strtotime("+15 minutes", $timeStamp)) % 15;
+                        $time = date('g:', strtotime("+15 minutes", $timeStamp)).(($minutes) ? $minutes : '00').date(' A', $timeStamp);
                      }
                      ?>
 
-                     <td><input type="text" name="class_time" value="<?= $time; ?>" /> <label>*Length</label>
+                     <td><input type="text" name="class_time" value="<?= esc_attr($time); ?>" /> <label>*Length</label><?php // Don't need to escape time but why not. ?>
                         <select name="class_length">
                            <option value="0">&nbsp;</option>
                            <?php
@@ -868,11 +892,11 @@ if(!class_exists('LIR')) {
                          foreach($classLocation as $x) {
                             echo '<option value="'.esc_attr($x).'"';
 
-                            if(!$classAdded && isset($_POST['class_location']) && ($_POST['class_location'] == esc_attr($x))) {
+                            if(!$classAdded && isset($_POST['class_location']) && ($_POST['class_location'] == $x)) {
                                echo ' selected="selected"';
                             }
 
-                            echo '>'.$x.'</option>';
+                            echo '>'.esc_html($x).'</option>';
                          }
                          ?>
 
@@ -887,11 +911,11 @@ if(!class_exists('LIR')) {
                         foreach($classType as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && isset($_POST['class_type']) && ($_POST['class_type'] == esc_attr($x))) {
+                           if(!$classAdded && isset($_POST['class_type']) && ($_POST['class_type'] == $x)) {
                               echo ' selected="selected"';
                            }
 
-                           echo '>'.$x.'</option>';
+                           echo '>'.esc_html($x).'</option>';
                         }
                         ?>
 
@@ -906,11 +930,11 @@ if(!class_exists('LIR')) {
                         foreach($audience as $x) {
                            echo '<option value="'.esc_attr($x).'"';
 
-                           if(!$classAdded && isset($_POST['audience']) && ($_POST['audience'] == esc_attr($x))) {
+                           if(!$classAdded && isset($_POST['audience']) && ($_POST['audience'] == $x)) {
                               echo ' selected="selected"';
                            }
 
-                           echo '>'.$x.'</option>';
+                           echo '>'.esc_html($x).'</option>';
                         }
                         ?>
 
@@ -929,7 +953,7 @@ if(!class_exists('LIR')) {
                      $flags = $wpdb->get_results($wpdb->prepare("SELECT name, value FROM ".$this->tables['flags']." WHERE posts_id = %d", $tempID, OBJECT));
 
                      foreach($flags as $f) {
-                        echo '<tr><th>'.$f->name.'</th>';
+                        echo '<tr><th>'.esc_html($f->name).'</th>';
                         echo '<td><input type="checkbox" name="flagValue'.$i.'" ';
 
                         if($f->value) {
@@ -947,7 +971,7 @@ if(!class_exists('LIR')) {
 
                      foreach($flags as $name => $isEnabled) {
                         if($isEnabled) {
-                           echo '<tr><th>'.$name.'</th>';
+                           echo '<tr><th>'.esc_html($name).'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$i.'" />';
                            echo '<input type="hidden" name="flagName'.$i.'" value="'.esc_attr($name).'" /></td></tr>';
                            $i++;
@@ -964,7 +988,7 @@ if(!class_exists('LIR')) {
                         $d = substr($name, -1, 1);
 
                         if(!empty($_POST[$name])) {
-                           echo '<tr><th>'.$_POST[$name].'</th>';
+                           echo '<tr><th>'.esc_html($_POST[$name]).'</th>';
                            echo '<td><input type="checkbox" name="flagValue'.$d.'"'; if(isset($_POST['flagValue'.$d]) && $_POST['flagValue'.$d] == 'on') { echo ' checked="checked"'; } echo ' />';
                            echo '<input type="hidden" name="flagName'.$d.'" value="'.esc_attr($_POST[$name]).'" /></td></tr>';
                         }
@@ -974,7 +998,7 @@ if(!class_exists('LIR')) {
 
                   <tr>
                      <th>Number of Students Attended</th>
-                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && isset($_POST['attendance'])) echo $_POST['attendance']; ?>" /></td>
+                     <td><input type="number" name="attendance" value="<?php if(!$classAdded && isset($_POST['attendance'])) echo esc_attr($_POST['attendance']); ?>" /></td>
                   </tr>
                </table>
 
@@ -1007,6 +1031,7 @@ if(!class_exists('LIR')) {
          global $wpdb, $current_user;
          $this->init($wpdb);
          get_currentuserinfo();
+         $timeStamp = current_time('timestamp');
 
 
          $dataTypes = array();
@@ -1038,14 +1063,15 @@ if(!class_exists('LIR')) {
             $myQuery .= ' department_group = %s,';
             array_push($dataTypes, $_POST['department_group']);
          }
+
          $myQuery .= ' last_updated_by = %d,';
          array_push($dataTypes, $current_user->ID);
 
          // Datetime columns.
          if(isset($_POST['class_date']) && isset($_POST['class_time']) && isset($_POST['class_length'])) {
-            $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time']));
+            $classStart = date('Y-m-d G:i', strtotime($_POST['class_date'].' '.$_POST['class_time'], $timeStamp));
             $myQuery .= ' class_start = \''.$classStart.'\',';
-            $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes')).'\',';
+            $myQuery .= ' class_end = \''.date('Y-m-d G:i', strtotime($classStart.' +'.$_POST['class_length'].' minutes', $timeStamp)).'\',';
          }
 
          // NULL columns.
@@ -1058,7 +1084,7 @@ if(!class_exists('LIR')) {
          $myQuery .= ' class_description = ';
          if(empty($_POST['class_description'])) { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['class_description']); }
          $myQuery .= ' course_number = ';
-         if(empty($_POST['course_number']))     { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, $_POST['course_number']); }
+         if(empty($_POST['course_number']))     { $myQuery .= 'NULL,'; } else { $myQuery .= '%s,'; array_push($dataTypes, sanitize_text_field($_POST['course_number'])); }
 
          // Attendance is a special case since we differentiate between 0 and empty.
          $myQuery .= ' attendance = ';
@@ -1204,13 +1230,14 @@ if(!class_exists('LIR')) {
       private function generateReport($fileOutput = true) {
          global $wpdb;
          $this->init($wpdb);
-         $fileName = $this->options['slug'];
+         $fileName = preg_replace('/[^a-z]/i', '', $this->options['slug']);
          $query = 'SELECT p.id, librarian_name, librarian2_name, instructor_name, instructor_email, instructor_phone,
                    class_start, class_end, class_location, class_type, audience, class_description, department_group,
                    course_number, attendance, u.display_name as owner, last_updated,
                    u2.display_name as last_updated_by FROM '.$this->tables['posts'].' p JOIN '.$wpdb->users.' u ON p.owner_id = u.ID
                    JOIN '.$wpdb->users.' u2 ON p.last_updated_by = u2.ID';
          $options = array();
+         $timeStamp = current_time('timestamp');
 
          // Check if additional parameters have been given.
          if(!empty($_POST['librarian_name']) || !empty($_POST['startDate']) || !empty($_POST['endDate'])) {
@@ -1220,19 +1247,19 @@ if(!class_exists('LIR')) {
             if(!empty($_POST['librarian_name'])) {
                $query .= ' librarian_name = %s AND';
                array_push($options, $_POST['librarian_name']);
-               $fileName .= ' '.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
+               $fileName .= '_'.preg_replace('/[^a-z]/i', '', $_POST['librarian_name']);
             }
             if(!empty($_POST['startDate'])) {
-               $date = date('Y-m-d', strtotime($_POST['startDate']));
+               $date = date('Y-m-d', strtotime($_POST['startDate'], $timeStamp));
                $query .= ' class_start >= %s AND';
                array_push($options, $date.' 00:00:00');
-               $fileName .= ' starting '.$date;
+               $fileName .= '_starting_'.$date;
             }
             if(!empty($_POST['endDate'])) {
-               $date = date('Y-m-d', strtotime($_POST['endDate']));
+               $date = date('Y-m-d', strtotime($_POST['endDate'], $timeStamp));
                $query .= ' class_start <= %s AND';
                array_push($options, $date.' 23:59:59');
-               $fileName .= ' ending '.$date;
+               $fileName .= '_ending_'.$date;
             }
 
             // Remove trailing AND from query.
@@ -1242,7 +1269,7 @@ if(!class_exists('LIR')) {
             $query = $wpdb->prepare($query, $options);
          }
          else {
-            $fileName .= ' all';
+            $fileName .= '_all';
          }
 
          $fileName .= '.csv';
@@ -1269,7 +1296,7 @@ if(!class_exists('LIR')) {
          if($result && $fileOutput) {
             // Send the proper header information for a CSV file.
             header("Content-type: text/csv");
-            header("Content-Disposition: attachment; filename=".$fileName);
+            header("Content-Disposition: attachment; filename=".$fileName); // SHOULD THE FILENAME BE ESCAPED?
             header("Pragma: no-cache");
             header("Expires: 0");
 
@@ -1314,7 +1341,7 @@ if(!class_exists('LIR')) {
                      echo '<tr>';
 
                      foreach($line as $l) {
-                        echo '<td>'.$l.'</td>';
+                        echo '<td>'.esc_html($l).'</td>';
                      }
 
                      echo '</tr>';
@@ -1341,6 +1368,9 @@ if(!class_exists('LIR')) {
 
          global $wpdb;
          $this->init($wpdb);
+
+         // Remove added slashes!
+         if(!empty($_POST)) { $_POST = stripslashes_deep($_POST); }
 
          // Get current fields from database.
          $departmentGroup = unserialize($wpdb->get_var("SELECT value FROM ".$this->tables['meta']." WHERE field = 'department_group_values'"));
@@ -1509,7 +1539,7 @@ if(!class_exists('LIR')) {
                <select id="deptGroupSB" name="deptGroupSB" size="<?= count($departmentGroup) < 10 ? count($departmentGroup) : '10'; ?>">
                   <?php
                   foreach($departmentGroup as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1525,7 +1555,7 @@ if(!class_exists('LIR')) {
                <select id="classLocSB" name="classLocSB" size="<?= count($classLocation) < 10 ? count($classLocation) : '10'; ?>">
                   <?php
                   foreach($classLocation as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1541,7 +1571,7 @@ if(!class_exists('LIR')) {
                <select id="classTypeSB" name="classTypeSB" size="<?= count($classType) < 10 ? count($classType) : '10'; ?>">
                   <?php
                   foreach($classType as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1557,7 +1587,7 @@ if(!class_exists('LIR')) {
                <select id="audienceSB" name="audienceSB" size="<?= count($audience) < 10 ? count($audience) : '10'; ?>">
                   <?php
                   foreach($audience as $i => $x) {
-                     echo '<option value="'.$i.'">'.$x.'</option>';
+                     echo '<option value="'.esc_attr($i).'">'.esc_html($x).'</option>';
                   }
                   ?>
                </select><br /><br />
@@ -1572,7 +1602,7 @@ if(!class_exists('LIR')) {
                <?php
                $i = 1;
                foreach($flags as $name => $value) {
-                  echo '<p><label>Name: <input type="text" name="flagName'.$i.'" value="'.$name.'" /></label>
+                  echo '<p><label>Name: <input type="text" name="flagName'.esc_attr($i).'" value="'.esc_attr($name).'" /></label>
                         <label>Enabled <input type="radio" name="flagEnabled'.$i.'" value="1" '; if($value) { echo 'checked="checked"'; } echo' /></label>
                         <label>Disabled <input type="radio" name="flagEnabled'.$i.'" value="0" '; if(!$value) { echo 'checked="checked"'; } echo' /></label></p>';
 
@@ -1607,13 +1637,19 @@ if(!class_exists('LIR')) {
             wp_die('You do not have sufficient permissions to access this page.');
          }
 
-         $this->init();
+         global $wpdb;
+         $this->init($wpdb);
 
          ?>
          <div class="wrap">
             <h2>Settings</h2>
 
             <?php
+            if($this->options['debug']) {
+               $row = $wpdb->get_row("SELECT * FROM ".$wpdb->prefix."options WHERE option_name = '".self::OPTIONS."'", OBJECT);
+               echo '<pre>'.print_r($row, true).'</pre>';
+            }
+
             if(!empty($_GET['settings-updated'])) {
                echo '<div id="message" class="updated '.self::SLUG.'-fade">';
                echo 'The settings have been updated!';
@@ -1626,23 +1662,26 @@ if(!class_exists('LIR')) {
                <table class="form-table">
                   <tr>
                      <th scope="row">Plugin Name</th>
-                     <td><input type="text" name="<?= self::OPTIONS.'[name]'; ?>" value="<?= $this->options['name']; ?>" /></td>
+                     <td><input type="text" name="<?= self::OPTIONS.'[name]'; ?>" value="<?= esc_attr($this->options['name']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Plugin Slug</th>
-                     <td><input type="text" name="<?= self::OPTIONS.'[slug]'; ?>" value="<?= $this->options['slug']; ?>" /></td>
+                     <td><input type="text" name="<?= self::OPTIONS.'[slug]'; ?>" value="<?= esc_attr($this->options['slug']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Class Length Interval<br /><em class="smaller">(in minutes)</em></th>
-                     <td><input type="number" name="<?= self::OPTIONS.'[intervalLength]'; ?>" value="<?= $this->options['intervalLength'] ?>" /></td>
+                     <td><input type="number" name="<?= self::OPTIONS.'[intervalLength]'; ?>" value="<?= esc_attr($this->options['intervalLength']); ?>" /></td>
                   </tr>
                   <tr>
                      <th scope="row">Number of Intervals</th>
-                     <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= $this->options['intervalAmount'] ?>" /></td>
+                     <td><input type="number" name="<?= self::OPTIONS.'[intervalAmount]'; ?>" value="<?= esc_attr($this->options['intervalAmount']); ?>" /></td>
                   </tr>
                   <tr>
+                     <th scope="row">Email Reminders<br /><em class="smaller">(to remind librarians to add class attendance after the class has ended)</em></th>
+                     <td><input type="checkbox" name="<?= self::OPTIONS.'[emailEnabled]'; ?>" <?php checked($this->options['emailEnabled'], true); ?> /> Enabled</td>
+                  <tr>
                      <th scope="row">Debugging<br /><em class="warning smaller">(this produces a lot of output)</em></th>
-                     <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], 'on'); ?> /> Enabled</td>
+                     <td><input type="checkbox" name="<?= self::OPTIONS.'[debug]'; ?>" <?php checked($this->options['debug'], true); ?> /> Enabled</td>
                   </tr>
                </table>
 
@@ -1676,7 +1715,8 @@ if(!class_exists('LIR')) {
          $input = array_map("trim", $input);
 
          $input['version'] = $this->options['version'];
-         $input['debug'] = (isset($input['debug']) && ($input['debug'] == 'on')) ? 'on' : '';
+         $input['debug'] = (isset($input['debug']) && ($input['debug'] == 'on')) ? true : false;
+         $input['emailEnabled'] = (isset($input['emailEnabled']) && ($input['emailEnabled'] == 'on')) ? true: false;
          $input['name'] = (empty($input['name'])) ? self::$defaultOptions['name'] : sanitize_text_field($input['name']);
          $input['slug'] = (empty($input['slug'])) ? self::$defaultOptions['slug'] : sanitize_text_field($input['slug']);
          $input['intervalLength'] = (absint($input['intervalLength']) < 1) ? self::$defaultOptions['intervalLength'] : absint($input['intervalLength']);
@@ -1689,7 +1729,7 @@ if(!class_exists('LIR')) {
       /*
          Function: emailReminders
             Sends out email reminders to users who have a class that does not have the attendance
-            filled out that eneded before today.
+            filled out that eneded before today (if enabled).
 
          Outputs:
             HTML emails through WordPress.
@@ -1700,6 +1740,8 @@ if(!class_exists('LIR')) {
       public function emailReminders() {
          global $wpdb;
          $this->init($wpdb);
+
+         if(!$this->options['emailEnabled']) { return; }
 
          add_filter('wp_mail_content_type', array(&$this, 'setMailToHtml')); // So we can send the email in HTML.
 
@@ -1713,7 +1755,7 @@ if(!class_exists('LIR')) {
             $message .= '<p><a href="'.admin_url('admin.php?page='.self::SLUG.'-add-a-class&edit='.$r->id).'">'.$r->department_group;
             $message .= $r->course_number ? ' '.$r->course_number : '';
             $message .= '</a></p>';
-            $message .= '<p>Warmly,<br />'.$this->options['slug'].'</p>';
+            $message .= '<p>Warmly,<br />'.esc_html($this->options['slug']).'</p>';
 
             wp_mail($uInfo->user_email, 'REMINDER: '.$this->options['name'], $message); // From nobody (may have to look into this later)?
          }
@@ -1765,26 +1807,7 @@ if(!class_exists('LIR')) {
          // If 0 notifications we still want to update the menu, just in case (ex: last notification was handled and menu needed to be updated to reflect that 1 -> 0).
          $notifications = $count ? ' <span class="update-plugins count-'.$count.'"><span class="update-count">'.$count.'</span></span>' : '';
          $menu[$position][0] = $this->options['slug'].$notifications; // Rewrite the entire name in case this function is called multiple times.
-      }
-
-
-      /*
-         Function: setTimeZone
-            Sets the default timezone that PHP uses with the date function. This will not
-            work correctly if the GMT offset is used and DST is in effect.
-      */
-      private function setTimeZone() {
-         $zoneString = get_option('timezone_string'); // Is the timezone in here?
-         $gmtOffset = get_option('gmt_offset'); // How about in here?
-
-         if(!empty($zoneString)) {
-            date_default_timezone_set($zoneString);
-         }
-         else if(!empty($gmtOffset)) {
-            // This will not work correctly if the timezone uses DST (during DST).
-            date_default_timezone_set(timezone_name_from_abbr(null, $gmtOffset * 3600, 0));
-         }
-         // else... what now?
+         // SHOULD THE SLUG ABOVE BE ESCAPED IN SOME MANNER?
       }
 
 

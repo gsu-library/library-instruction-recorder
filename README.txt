@@ -3,8 +3,8 @@ Contributors: mbrooks34
 Donate link: http://library.gsu.edu/giving/
 Tags: library, instruction, teaching, library instruction recorder, instruction scheduling, library instruction, bibliographic instruction
 Requires at least: 3.6
-Tested up to: 4.0.7
-Stable tag: 1.1.3
+Tested up to: 4.2.4
+Stable tag: 1.1.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -69,6 +69,9 @@ You can submit issue tickets to our [Bitbucket issue tracker](https://bitbucket.
 
 == Upgrade Notice ==
 
+= 1.1.4 =
+Fixes date/time/timezone, last updated field, single quote/forward slash, report, and copy issues. Adds an email setting. THIS UPDATE ALTERS THE LIR_POSTS TABLE, PLEASE BACK UP YOUR TABLE DATA BEFORE UPDATING.
+
 = 1.1.3 =
 Fixes the uninstaller!
 
@@ -91,6 +94,16 @@ Fixes a few bugs including a timezone related bug.
 Initial release so why not install?
 
 == Changelog ==
+
+= 1.1.4 =
+* No longer sets PHP timezone, uses WordPress current_time function instead.
+* Updated table creation for posts table, now last_updated is updated on an update (ON UPDATE CURRENT_TIMESTAMP).
+* Alters posts table to be in line with the above.
+* Strips extra slashes that WordPress adds to POST/GET/&c. variables (this was causing extra slashes to be added in front of single quotes).
+* Escaped a lot of fields that were not already escaped.
+* Report downloads in Firefox are fixed (removed spaces from file name).
+* Copying a class now allows all fields to be edited before being submitted.
+* Added an option to disable email reminders.
 
 = 1.1.3 =
 * Doesn't look for WP_UNINSTALL_PLUGIN flag in the uninstall method now.
